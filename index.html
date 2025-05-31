@@ -1819,6 +1819,7 @@ Transcript:
         async function fetchUrlMetadata(url) {
             // First try the backend API for more reliable scraping
             try {
+                console.log(`🔍 Fetching metadata for: ${url}`);
                 const response = await fetch(`${BACKEND_API_BASE}/extract-url-metadata`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1829,24 +1830,43 @@ Transcript:
                     })
                 });
 
+                console.log(`📡 Backend response status: ${response.status}`);
+                
                 if (response.ok) {
                     const data = await response.json();
-                    return {
-                        url: url,
-                        title: data.title || 'No title found',
-                        description: data.description || 'No description available',
-                        domain: new URL(url).hostname,
-                        ogData: data.ogData || {},
-                        success: true,
-                        convertedAt: new Date().toISOString()
-                    };
+                    console.log('📊 Backend response data:', data);
+                    
+                    // Check if the backend reported success
+                    if (data.success) {
+                        console.log('✅ Backend extraction successful');
+                        return {
+                            url: url,
+                            title: data.title || 'No title found',
+                            description: data.description || 'No description available',
+                            domain: data.domain || new URL(url).hostname,
+                            thumbnail: data.thumbnail,
+                            ogData: data.ogData || {},
+                            success: true,
+                            convertedAt: new Date().toISOString()
+                        };
+                    } else {
+                        // Backend returned an error but with 200 status
+                        console.log('⚠️ Backend returned error:', data.error);
+                        throw new Error(data.error || 'Backend extraction failed');
+                    }
+                } else {
+                    const errorText = await response.text();
+                    console.log('❌ Backend HTTP error:', response.status, errorText);
+                    throw new Error(`Backend API error: ${response.status}`);
                 }
             } catch (backendError) {
-                console.log('Backend extraction failed, trying frontend fallback:', backendError);
+                console.log('❌ Backend extraction failed:', backendError);
+                // Continue to fallback
             }
 
             // Fallback to client-side approach using a proxy service
             try {
+                console.log(`🔄 Trying fallback proxy for: ${url}`);
                 const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
                 const response = await fetch(proxyUrl);
                 const data = await response.json();
@@ -1858,6 +1878,7 @@ Transcript:
                     const title = extractTitle(doc, url);
                     const description = extractDescription(doc);
                     
+                    console.log('✅ Fallback extraction successful');
                     return {
                         url: url,
                         title: title,
@@ -1868,9 +1889,10 @@ Transcript:
                     };
                 }
             } catch (proxyError) {
-                console.log('Proxy extraction failed:', proxyError);
+                console.log('❌ Proxy extraction failed:', proxyError);
             }
 
+            console.log('❌ All extraction methods failed for:', url);
             throw new Error('Unable to fetch URL metadata from any source');
         }
 
