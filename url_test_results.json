@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-05-31T17:53:23.042720",
+  "timestamp": "2025-06-01T02:13:24.079126",
   "total_urls": 5,
   "successful": 4,
   "failed": 1,
@@ -7,17 +7,17 @@
     {
       "success": true,
       "url": "https://x.com/gdb",
-      "title": "JavaScript is not available.",
-      "description": "We\u2019ve detected that JavaScript is disabled in this browser. Please enable JavaScript or switch to a supported browser to continue using x.com. You can see a list of supported browsers in our Help Cent...",
+      "title": "X/Twitter Post (Limited Access)",
+      "description": "Content not accessible due to platform restrictions",
       "domain": "x.com",
       "thumbnail": "https://abs.twimg.com/favicons/twitter.3.ico",
-      "markdown": "[JavaScript is not available.](https://x.com/gdb)"
+      "markdown": "[X/Twitter Post (Limited Access)](https://x.com/gdb)"
     },
     {
       "success": true,
       "url": "https://www.reddit.com/r/RCB/comments/1kwuj95/we_kohlified_into_qualifier1/",
       "title": "WE KOHLI-FIED INTO QUALIFIER-1!!!\ud83d\ude2d\ud83d\ude2d\ud83d\ude2d : r/RCB",
-      "description": "r/RCB \u2022 1290 upvotes",
+      "description": "r/RCB \u2022 1289 upvotes \u2022 61 comments",
       "domain": "reddit.com",
       "thumbnail": "https://b.thumbs.redditmedia.com/JnigE1rMhx7CfWcJCuMK0_wWTX8zhor96x3it_dRbhw.jpg",
       "markdown": "[WE KOHLI-FIED INTO QUALIFIER-1!!!\ud83d\ude2d\ud83d\ude2d\ud83d\ude2d : r/RCB](https://www.reddit.com/r/RCB/comments/1kwuj95/we_kohlified_into_qualifier1/)"
@@ -26,7 +26,7 @@
       "success": true,
       "url": "https://www.youtube.com/watch?v=xgmTC0YqCho",
       "title": "Fuslie, Yvonnie, TinaKitten KARAOKE STREAM!",
-      "description": "Fuslie, Yvonnie, TinaKitten KARAOKE STREAM!\n\nSUBSCRIBE FOR MORE FUSLIE: https://www.youtube.com/fuslie\n\nsocial media \u25ba\u25ba\u25ba\ntwitch: https://www.twitch.tv/fuslie\ntwitter: https://twitter.com/fuslie\ninstag...",
+      "description": "Fuslie, Yvonnie, TinaKitten KARAOKE STREAM!\n\nSUBSCRIBE FOR MORE FUSLIE: https://www.youtube.com/fuslie\n\nsocial media \u25ba\u25ba\u25ba\ntwitch: https://www.twitch.tv/fuslie\ntwitter: https://twitter.com/fuslie\ninstagram: https://instagram.com/fuslie\nreddit: https://www.reddit.com/r/fuslie\ndiscord: https://discord.g...",
       "domain": "youtube.com",
       "thumbnail": "https://i.ytimg.com/vi/xgmTC0YqCho/maxresdefault.jpg",
       "markdown": "[Fuslie, Yvonnie, TinaKitten KARAOKE STREAM!](https://www.youtube.com/watch?v=xgmTC0YqCho)"

@@ -679,7 +679,7 @@ class UrlMetadataExtractor:
                         
                         return {
                             'title': title,
-                            'description': description,
+                            'description': description or '',
                             'thumbnail': repo_data['owner']['avatar_url'],
                             'domain': 'github.com',
                             'og_data': {
