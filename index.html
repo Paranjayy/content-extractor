@@ -1,0 +1,4088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Transcript Extractor Pro</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        :root {
+            --primary: #1a73e8;
+            --primary-dark: #1557b0;
+            --success: #34a853;
+            --warning: #fbbc04;
+            --danger: #ea4335;
+            --dark: #202124;
+            --light: #f8f9fa;
+            --border: #dadce0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--dark);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 300;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .tabs {
+            display: flex;
+            background: var(--light);
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab {
+            flex: 1;
+            min-width: 120px;
+            padding: 16px 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            border-bottom: 3px solid transparent;
+            white-space: nowrap;
+        }
+
+        .tab:hover { 
+            background: linear-gradient(145deg, #e8f0fe, #f0f9ff);
+        }
+        
+        .tab.active {
+            background: linear-gradient(145deg, white, #f8fafc);
+            border-bottom-color: var(--primary);
+            color: var(--primary);
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+        }
+
+        .tab-content {
+            display: none;
+            padding: 30px;
+        }
+
+        .tab-content.active { display: block; }
+
+        .input-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .input-field {
+            flex: 1;
+            padding: 14px 16px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.2s;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .btn {
+            background: linear-gradient(145deg, var(--primary), #4f46e5);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            font-size: 14px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+            background: linear-gradient(145deg, #4f46e5, #3b82f6);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(145deg, #6b7280, #374151);
+            box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(145deg, #4b5563, #1f2937);
+            box-shadow: 0 8px 20px rgba(107, 114, 128, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(145deg, #10b981, #059669);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(145deg, #059669, #047857);
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-info {
+            background: linear-gradient(145deg, #3b82f6, #2563eb);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-info:hover {
+            background: linear-gradient(145deg, #2563eb, #1d4ed8);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-warning {
+            background: linear-gradient(145deg, #f59e0b, #d97706);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+
+        .btn-warning:hover {
+            background: linear-gradient(145deg, #d97706, #b45309);
+            box-shadow: 0 8px 20px rgba(245, 158, 11, 0.4);
+        }
+
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 12px;
+            border-radius: 8px;
+        }
+
+        .playlist-controls {
+            display: flex;
+            gap: 12px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .video-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 16px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        .option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--light);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+            display: none;
+        }
+
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .alert-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+
+        .video-card {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 20px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+
+        .video-thumbnail {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .video-info h3 {
+            font-size: 1.3rem;
+            color: var(--dark);
+            margin-bottom: 8px;
+        }
+
+        .video-meta {
+            color: #5f6368;
+            margin: 4px 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 16px;
+            margin: 16px 0;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 16px;
+            background: var(--light);
+            border-radius: 8px;
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #5f6368;
+        }
+
+        .transcript-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            background: #fafafa;
+            margin: 20px 0;
+        }
+
+        .transcript-controls {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .transcript-paragraphs {
+            margin-top: 16px;
+        }
+
+        .transcript-paragraph {
+            margin-bottom: 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .paragraph-header {
+            padding: 12px 16px;
+            background: #f5f5f5;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background-color 0.2s;
+        }
+
+        .paragraph-header:hover {
+            background: #e8e8e8;
+        }
+
+        .paragraph-toggle {
+            font-size: 14px;
+            min-width: 20px;
+        }
+
+        .paragraph-preview {
+            flex: 1;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .paragraph-count {
+            color: #666;
+            font-size: 0.85rem;
+        }
+
+        .paragraph-content {
+            padding: 12px 16px;
+            background: white;
+        }
+
+        .clickable-timestamp {
+            color: var(--primary) !important;
+            text-decoration: none;
+            font-weight: 600;
+            font-family: monospace;
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .clickable-timestamp:hover {
+            background: var(--primary);
+            color: white !important;
+            text-decoration: none;
+        }
+
+        .transcript-text {
+            margin-left: 8px;
+            line-height: 1.6;
+        }
+
+        .transcript-line {
+            margin-bottom: 8px;
+            line-height: 1.6;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--light);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 16px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.3s;
+        }
+
+        .bulk-result {
+            padding: 16px;
+            border-left: 4px solid var(--success);
+            background: #f8f9fa;
+            margin: 8px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .bulk-result.error {
+            border-left-color: var(--danger);
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .single-line-view {
+            background: linear-gradient(145deg, #f8f9ff 0%, #e8f4fd 100%);
+            padding: 20px;
+            border-radius: 12px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.8;
+            border: 1px solid #e1e5e9;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .single-line-view .transcript-line {
+            margin-bottom: 8px;
+            transition: background-color 0.2s;
+        }
+
+        .single-line-view .transcript-line:hover {
+            background-color: rgba(26, 115, 232, 0.1);
+            border-radius: 4px;
+            padding: 2px 4px;
+        }
+
+        .stitched-paragraph {
+            background: linear-gradient(145deg, #fafbff 0%, #f0f4f8 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            line-height: 1.8;
+            font-size: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .stitched-paragraph:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-1px);
+            transition: all 0.2s ease;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .setting-item {
+            background: linear-gradient(145deg, #f8fafc, #e2e8f0);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #cbd5e1;
+        }
+
+        .setting-item h4 {
+            margin-bottom: 12px;
+            color: var(--dark);
+            font-size: 16px;
+        }
+
+        .setting-item p {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 12px;
+        }
+
+        .download-history-item {
+            background: linear-gradient(145deg, #ffffff, #f8fafc);
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .download-history-item:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-1px);
+            transition: all 0.2s ease;
+        }
+
+        .url-toggle-container {
+            background: linear-gradient(145deg, #f1f5f9, #e2e8f0);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            border: 1px solid #cbd5e1;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+            margin-left: 12px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(145deg, #cbd5e1, #94a3b8);
+            transition: 0.4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background: white;
+            transition: 0.4s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        input:checked + .slider {
+            background: linear-gradient(145deg, var(--primary), #4f46e5);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .api-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .api-status.connected {
+            background: linear-gradient(145deg, #10b981, #059669);
+            color: white;
+        }
+
+        .api-status.disconnected {
+            background: linear-gradient(145deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        .rate-limit-info {
+            background: linear-gradient(145deg, #fef3c7, #fde68a);
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .tabs { flex-direction: column; }
+            .input-group { flex-direction: column; }
+            .video-card { grid-template-columns: 1fr; }
+            .actions { flex-direction: column; }
+        }
+
+        .filter-controls {
+            background: linear-gradient(145deg, #f8fafc, #e2e8f0);
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid #cbd5e1;
+            margin: 16px 0;
+        }
+
+        .filter-controls h4 {
+            margin-bottom: 12px;
+            color: var(--dark);
+        }
+
+        .filter-controls button {
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+
+        .bulk-result.duplicate {
+            border-left-color: var(--warning);
+            background: #fff8e1;
+        }
+
+        .video-actions {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .video-actions .btn {
+            white-space: nowrap;
+        }
+
+        .error-indicator {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        .duplicate-indicator {
+            color: var(--warning);
+            font-weight: 600;
+        }
+
+        .success-indicator {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .video-actions {
+                flex-direction: column;
+                gap: 4px;
+            }
+            
+            .filter-controls button {
+                width: 100%;
+                margin-right: 0;
+            }
+        }
+
+        .main-tab-content {
+            display: none;
+        }
+
+        .main-tab-content.active {
+            display: block;
+        }
+
+        .extracted-urls-container {
+            background: linear-gradient(145deg, #f8fafc, #e2e8f0);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 12px 0;
+            border: 1px solid #cbd5e1;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .extracted-url-item {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .extracted-url-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .url-domain {
+            font-size: 0.85rem;
+            color: #64748b;
+            background: #f1f5f9;
+            padding: 2px 8px;
+            border-radius: 4px;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        .url-link {
+            flex: 1;
+            font-family: monospace;
+            font-size: 0.9rem;
+            word-break: break-all;
+        }
+
+        .url-card {
+            background: linear-gradient(145deg, #ffffff, #f8fafc);
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .url-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-1px);
+            transition: all 0.2s ease;
+        }
+
+        .url-card h4 {
+            margin-bottom: 12px;
+            color: var(--dark);
+        }
+
+        .url-meta {
+            color: #5f6368;
+            margin: 4px 0;
+            font-size: 0.9rem;
+        }
+
+        .url-result {
+            background: linear-gradient(145deg, #f0f9ff, #e0f2fe);
+            border: 1px solid #0ea5e9;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 12px 0;
+            border-left: 4px solid var(--primary);
+        }
+
+        .url-result.error {
+            background: linear-gradient(145deg, #fef2f2, #fecaca);
+            border-color: var(--danger);
+            border-left-color: var(--danger);
+        }
+
+        .url-result.warning {
+            background: linear-gradient(145deg, #fffbeb, #fef3c7);
+            border-color: var(--warning);
+            border-left-color: var(--warning);
+        }
+
+        .url-result-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .url-result-status {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .url-result-status.success {
+            background: var(--success);
+            color: white;
+        }
+
+        .url-result-status.error {
+            background: var(--danger);
+            color: white;
+        }
+
+        .url-result-status.warning {
+            background: var(--warning);
+            color: white;
+        }
+
+        .markdown-output {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+            margin: 8px 0;
+            word-break: break-all;
+        }
+
+        .retry-button {
+            background: linear-gradient(145deg, #f59e0b, #d97706);
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .retry-button:hover {
+            background: linear-gradient(145deg, #d97706, #b45309);
+            transform: translateY(-1px);
+        }
+
+        select {
+            padding: 8px 12px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            background: white;
+            font-size: 14px;
+            margin-left: 8px;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <h1>🎬 YouTube Transcript Extractor Pro</h1>
+                <p>Extract transcripts with real metadata, views, likes, and bulk processing</p>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchMainTab('transcript')">🎬 YouTube Transcript</button>
+                <button class="tab" onclick="switchMainTab('urlconverter')">🔗 URL to Markdown</button>
+            </div>
+
+            <!-- YouTube Transcript Extractor Section -->
+            <div class="main-tab-content active" id="transcript-section">
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab('single')">🎥 Single Video</button>
+                    <button class="tab" onclick="switchTab('bulk')">📋 Bulk Videos</button>
+                    <button class="tab" onclick="switchTab('playlist')">🎬 Playlist</button>
+                    <button class="tab" onclick="switchTab('export')">📦 Export & Download</button>
+                    <button class="tab" onclick="switchTab('history')">📚 Download History</button>
+                    <button class="tab" onclick="switchTab('settings')">⚙️ Settings</button>
+                </div>
+
+                <!-- Single Video Tab -->
+                <div class="tab-content active" id="single-tab">
+                    <div class="input-group">
+                        <input type="text" class="input-field" id="videoUrl" 
+                               placeholder="Enter YouTube URL (e.g., https://www.youtube.com/watch?v=dQw4w9WgXcQ)" />
+                        <button class="btn btn-primary" onclick="extractSingleVideo()">
+                            🔍 Extract Transcript
+                        </button>
+                    </div>
+
+                    <div class="options-grid">
+                        <div class="option">
+                            <input type="checkbox" id="includeDescription" checked>
+                            <label>Include description</label>
+                        </div>
+                        <div class="option">
+                            <input type="checkbox" id="includeMetadata" checked>
+                            <label>Include metadata</label>
+                        </div>
+                        <div class="option">
+                            <input type="checkbox" id="includeStats" checked>
+                            <label>Include views/likes</label>
+                        </div>
+                    </div>
+
+                    <div class="loading" id="loading">
+                        <div class="spinner"></div>
+                        <p id="loadingText">Extracting transcript... This may take a moment.</p>
+                    </div>
+
+                    <div class="alert alert-danger" id="error"></div>
+                    <div class="alert alert-success" id="success"></div>
+                    <div class="alert alert-warning" id="warning"></div>
+
+                    <div id="results" style="display: none;">
+                        <div id="videoCard"></div>
+                        <div id="transcriptContainer"></div>
+                        <div class="actions">
+                            <button class="btn btn-success" onclick="copyToClipboard()">📋 Copy as Markdown</button>
+                            <button class="btn btn-secondary" onclick="downloadMarkdown()">📄 Download MD</button>
+                            <button class="btn btn-secondary" onclick="downloadTranscript()">📝 Download TXT</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bulk Processing Tab -->
+                <div class="tab-content" id="bulk-tab">
+                    <h3>🚀 Bulk Video Processing</h3>
+                    <p style="margin-bottom: 20px; color: #5f6368;">
+                        Enter multiple YouTube URLs (one per line) or playlist URLs:
+                    </p>
+                    
+                    <textarea class="textarea" id="bulkUrls" 
+                              placeholder="https://www.youtube.com/watch?v=video1&#10;https://www.youtube.com/watch?v=video2&#10;https://www.youtube.com/playlist?list=PLxxxxxxx"></textarea>
+
+                    <div class="options-grid">
+                        <div class="option">
+                            <input type="number" id="maxVideos" min="1" max="100" value="25">
+                            <label>Max videos to process</label>
+                        </div>
+                        <div class="option">
+                            <input type="checkbox" id="bulkIncludeDescription">
+                            <label>Include descriptions</label>
+                        </div>
+                        <div class="option">
+                            <input type="checkbox" id="bulkIncludeStats" checked>
+                            <label>Include stats</label>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="processBulkVideos()" style="margin-top: 20px;">
+                        🚀 Process All Videos
+                    </button>
+
+                    <div id="bulkProgress" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <p id="progressText">Processing 0 of 0 videos...</p>
+                    </div>
+
+                    <div class="alert alert-danger" id="bulkError"></div>
+                    <div class="alert alert-success" id="bulkSuccess"></div>
+
+                    <div id="bulkStats" class="stats-grid" style="display: none;">
+                        <div class="stat-card">
+                            <div class="stat-number" id="totalProcessed">0</div>
+                            <div class="stat-label">Processed</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="successCount">0</div>
+                            <div class="stat-label">Successful</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="errorCount">0</div>
+                            <div class="stat-label">Failed</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="totalWords">0</div>
+                            <div class="stat-label">Total Words</div>
+                        </div>
+                    </div>
+
+                    <div id="bulkResults"></div>
+                    
+                    <div class="actions" id="bulkActions" style="display: none; margin-top: 20px;">
+                        <button class="btn btn-success" onclick="copyAllBulkResults()">📋 Copy All as Markdown</button>
+                        <button class="btn btn-secondary" onclick="downloadAllBulkAsZip()">📦 Download ZIP</button>
+                        <button class="btn btn-info" onclick="exportBulkAsCSV()">📊 Export CSV</button>
+                        <button class="btn btn-warning" onclick="exportBulkAsJSON()">💾 Export JSON</button>
+                    </div>
+                    
+                    <div class="filter-controls" id="bulkFilters" style="display: none; margin: 20px 0;">
+                        <h4>🔍 Filter Results</h4>
+                        <button class="btn btn-sm btn-secondary" onclick="filterBulkResults('all')" id="filterAll">All</button>
+                        <button class="btn btn-sm btn-success" onclick="filterBulkResults('success')" id="filterSuccess">✅ Successful</button>
+                        <button class="btn btn-sm btn-danger" onclick="filterBulkResults('failed')" id="filterFailed">❌ Failed</button>
+                        <button class="btn btn-sm btn-warning" onclick="filterBulkResults('duplicates')" id="filterDuplicates">🔄 Duplicates</button>
+                    </div>
+                </div>
+
+                <!-- Export Tab -->
+                <div class="tab-content" id="export-tab">
+                    <h3>💾 Export & Download Options</h3>
+                    
+                    <div class="actions" style="margin: 30px 0;">
+                        <button class="btn btn-success" onclick="exportAllAsCSV()">📊 Export CSV</button>
+                        <button class="btn btn-success" onclick="exportAllAsJSON()">📄 Export JSON</button>
+                        <button class="btn btn-success" onclick="exportAllAsZip()">🗃️ Export ZIP</button>
+                        <button class="btn btn-secondary" onclick="clearAllData()">🗑️ Clear All</button>
+                    </div>
+
+                    <div class="card" style="padding: 20px; background: #f8f9fa;">
+                        <h4>📋 Output Format Preview</h4>
+                        <pre style="margin-top: 16px; padding: 16px; background: white; border-radius: 8px; overflow-x: auto;">[(Video Title) - YouTube](https://www.youtube.com/watch?v=VIDEO_ID)
+
+Channel: Channel Name
+Views: 1.2M | Likes: 45K | Comments: 2.3K
+Duration: 10:30 | Published: 2023-01-15
+
+Transcript:
+(00:00) First line of transcript...
+(00:15) Second line of transcript...
+(00:30) Third line of transcript...</pre>
+                    </div>
+
+                    <div id="exportStats" style="display: none;">
+                        <h4>📊 Current Session Data</h4>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-number" id="sessionVideos">0</div>
+                                <div class="stat-label">Videos</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" id="sessionSize">0 KB</div>
+                                <div class="stat-label">Data Size</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Playlist Tab -->
+                <div class="tab-content" id="playlist-tab">
+                    <h3>🎬 Playlist Processing</h3>
+                    <p style="margin-bottom: 20px; color: #5f6368;">
+                        Extract transcripts from entire YouTube playlists with bulk download options.
+                    </p>
+                    
+                    <div class="input-group">
+                        <input type="text" class="input-field" id="playlistUrl" 
+                               placeholder="Enter YouTube Playlist URL (e.g., https://www.youtube.com/playlist?list=PLxxxxxxx)" />
+                        <button class="btn btn-primary" onclick="processPlaylist()">
+                            🎬 Process Playlist
+                        </button>
+                    </div>
+
+                    <div class="options-grid">
+                        <div class="option">
+                            <input type="number" id="playlistMaxVideos" min="1" max="50" value="20">
+                            <label>Max videos from playlist</label>
+                        </div>
+                        <div class="option">
+                            <input type="checkbox" id="playlistIncludeDescription">
+                            <label>Include descriptions</label>
+                        </div>
+                        <div class="option">
+                            <input type="checkbox" id="playlistIncludeStats" checked>
+                            <label>Include stats</label>
+                        </div>
+                    </div>
+
+                    <div class="playlist-controls" id="playlistControls" style="display: none;">
+                        <button class="btn btn-primary" onclick="copyPlaylistResults()">📋 Copy All</button>
+                        <button class="btn btn-success" onclick="downloadPlaylistAsZip()">📦 Download ZIP</button>
+                        <button class="btn btn-info" onclick="downloadPlaylistAsCSV()">📊 Download CSV</button>
+                        <button class="btn btn-warning" onclick="downloadPlaylistAsJSON()">💾 Download JSON</button>
+                    </div>
+
+                    <div id="playlistProgress" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="playlistProgressFill"></div>
+                        </div>
+                        <p id="playlistProgressText">Processing playlist...</p>
+                    </div>
+
+                    <div class="alert alert-danger" id="playlistError"></div>
+                    <div class="alert alert-success" id="playlistSuccess"></div>
+
+                    <div id="playlistResults"></div>
+                </div>
+
+                <!-- Download History Tab -->
+                <div class="tab-content" id="history-tab">
+                    <h3>📚 Download History</h3>
+                    <p style="margin-bottom: 20px; color: #5f6368;">
+                        View and manage all extracted transcripts from your current session.
+                    </p>
+
+                    <div class="actions" style="margin-bottom: 20px;">
+                        <button class="btn btn-primary" onclick="refreshHistory()">🔄 Refresh</button>
+                        <button class="btn btn-success" onclick="downloadAllHistory()">📦 Download All</button>
+                        <button class="btn btn-warning" onclick="exportHistoryAsCSV()">📊 Export CSV</button>
+                        <button class="btn btn-secondary" onclick="clearHistory()">🗑️ Clear History</button>
+                    </div>
+
+                    <div id="historyStats" class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number" id="historyVideos">0</div>
+                            <div class="stat-label">Total Videos</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="historyTranscripts">0</div>
+                            <div class="stat-label">Transcripts</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="historyWords">0</div>
+                            <div class="stat-label">Total Words</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="historySize">0 KB</div>
+                            <div class="stat-label">Data Size</div>
+                        </div>
+                    </div>
+
+                    <div id="historyList">
+                        <!-- History items will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div class="tab-content" id="settings-tab">
+                    <h3>⚙️ Settings & Configuration</h3>
+                    
+                    <div class="rate-limit-info">
+                        <strong>📊 API Rate Limits:</strong> YouTube Data API allows 10,000 units/day. Each video uses ~3 units, playlists use ~50 units. 
+                        Backend transcript extraction has no limits but uses processing time.
+                        <span class="api-status connected" id="apiStatus">✅ Connected</span>
+                    </div>
+
+                    <div class="settings-grid">
+                        <div class="setting-item">
+                            <h4>🔑 YouTube Data API Configuration</h4>
+                            <p>Bring your own API key for unlimited playlist processing and metadata.</p>
+                            <div class="input-group">
+                                <input type="password" class="input-field" id="customApiKey" 
+                                       placeholder="Enter your YouTube Data API v3 key (optional)">
+                                <button class="btn btn-primary" onclick="updateApiKey()">Save Key</button>
+                            </div>
+                            <small style="color: #64748b;">
+                                Get your free API key at: <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank">Google Cloud Console</a>
+                            </small>
+                        </div>
+
+                        <div class="setting-item">
+                            <h4>🔗 URL & Timestamp Display</h4>
+                            <p>Choose how timestamps and URLs are displayed in transcripts.</p>
+                            
+                            <div class="url-toggle-container">
+                                <label>Obsidian-friendly URLs (clickable links):</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="obsidianUrls" onchange="updateUrlDisplay()">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="url-toggle-container">
+                                <label>Stitched paragraph mode (combine 2-3 lines):</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="stitchedMode" checked onchange="updateStitchedMode()">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="setting-item">
+                            <h4>💾 Data & Privacy</h4>
+                            <p>All data is stored locally in your browser. Nothing is sent to external servers except API calls.</p>
+                            <div class="actions">
+                                <button class="btn btn-secondary" onclick="exportSettings()">📤 Export Settings</button>
+                                <button class="btn btn-warning" onclick="clearAllLocalData()">🗑️ Clear All Data</button>
+                            </div>
+                        </div>
+
+                        <div class="setting-item">
+                            <h4>🎯 Processing Options</h4>
+                            <p>Configure default processing behavior.</p>
+                            
+                            <div class="option">
+                                <input type="number" id="defaultMaxVideos" min="1" max="100" value="25">
+                                <label>Default max videos for bulk processing</label>
+                            </div>
+                            
+                            <div class="option">
+                                <input type="checkbox" id="autoIncludeDescription" checked>
+                                <label>Auto-include video descriptions</label>
+                            </div>
+                            
+                            <div class="option">
+                                <input type="checkbox" id="autoIncludeStats" checked>
+                                <label>Auto-include video statistics</label>
+                            </div>
+                        </div>
+
+                        <div class="setting-item">
+                            <h4>🚀 Backend Configuration</h4>
+                            <p>Current backend status and configuration.</p>
+                            <div class="input-group">
+                                <input type="text" class="input-field" id="backendUrl" 
+                                       value="http://localhost:5001/api" placeholder="Backend API URL">
+                                <button class="btn btn-primary" onclick="testBackendConnection()">Test Connection</button>
+                            </div>
+                            <div id="backendStatus" style="margin-top: 8px;">
+                                <span class="api-status connected">✅ Backend Connected</span>
+                            </div>
+                        </div>
+
+                        <div class="setting-item">
+                            <h4>📝 Transcript Display Options</h4>
+                            <p>Customize how transcripts are displayed and copied.</p>
+                            
+                            <div class="url-toggle-container">
+                                <label>Include timestamps in copy/download:</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="includeTimestamps" checked onchange="updateTimestampMode()">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="url-toggle-container">
+                                <label>Detect duplicate videos:</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="detectDuplicates" checked onchange="updateDuplicateDetection()">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- URL to Markdown Converter Section -->
+            <div class="main-tab-content" id="urlconverter-section">
+                <div class="tabs">
+                    <button class="tab active" onclick="switchUrlTab('single-url')">🔗 Single URL</button>
+                    <button class="tab" onclick="switchUrlTab('bulk-urls')">📋 Bulk URLs</button>
+                    <button class="tab" onclick="switchUrlTab('text-extract')">📝 Extract from Text</button>
+                    <button class="tab" onclick="switchUrlTab('url-history')">📚 Conversion History</button>
+                    <button class="tab" onclick="switchUrlTab('url-settings')">⚙️ URL Settings</button>
+                </div>
+
+                <!-- Single URL Converter Tab -->
+                <div class="tab-content active" id="single-url-tab">
+                    <h3>🔗 Single URL to Markdown Converter</h3>
+                    <p style="margin-bottom: 20px; color: #5f6368;">
+                        Convert any URL to a properly formatted markdown link with automatic title extraction.
+                    </p>
+                    
+                    <div class="input-group">
+                        <input type="text" class="input-field" id="singleUrl" 
+                               placeholder="Enter any URL (YouTube, Reddit, Twitter, websites...)" />
+                        <button class="btn btn-primary" onclick="convertSingleUrl()">
+                            🔍 Convert to Markdown
+                        </button>
+                    </div>
+
+                    <div class="options-grid">
+                        <div class="option">
+                            <input type="checkbox" id="includeDescription" checked>
+                            <label>Include meta description</label>
+                        </div>
+                        <div class="option">
+                            <input type="checkbox" id="includeOgData" checked>
+                            <label>Include Open Graph data</label>
+                        </div>
+                        <div class="option">
+                            <input type="checkbox" id="autoRetry">
+                            <label>Auto-retry failed requests</label>
+                        </div>
+                    </div>
+
+                    <div class="loading" id="urlLoading">
+                        <div class="spinner"></div>
+                        <p id="urlLoadingText">Converting URL... This may take a moment.</p>
+                    </div>
+
+                    <div class="alert alert-danger" id="urlError"></div>
+                    <div class="alert alert-success" id="urlSuccess"></div>
+                    <div class="alert alert-warning" id="urlWarning"></div>
+
+                    <div id="urlResults" style="display: none;">
+                        <div id="urlCard"></div>
+                        <div class="actions">
+                            <button class="btn btn-success" onclick="copyUrlMarkdown()">📋 Copy as Markdown</button>
+                            <button class="btn btn-secondary" onclick="downloadUrlMarkdown()">📄 Download MD</button>
+                            <button class="btn btn-secondary" onclick="copyUrlPlain()">📝 Copy Plain Text</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bulk URLs Tab -->
+                <div class="tab-content" id="bulk-urls-tab">
+                    <h3>📋 Bulk URL Conversion</h3>
+                    <p style="margin-bottom: 20px; color: #5f6368;">
+                        Convert multiple URLs to markdown links. Enter one URL per line.
+                    </p>
+                    
+                    <textarea class="textarea" id="bulkUrlsInput" 
+                              placeholder="https://example.com/page1&#10;https://reddit.com/r/example/post&#10;https://twitter.com/user/status/123"></textarea>
+
+                    <div class="options-grid">
+                        <div class="option">
+                            <input type="number" id="maxUrls" min="1" max="50" value="25">
+                            <label>Max URLs to process</label>
+                        </div>
+                        <div class="option">
+                            <input type="checkbox" id="bulkIncludeDescription">
+                            <label>Include descriptions</label>
+                        </div>
+                        <div class="option">
+                            <input type="checkbox" id="bulkAutoRetry" checked>
+                            <label>Auto-retry failed URLs</label>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="processBulkUrls()" style="margin-top: 20px;">
+                        🚀 Convert All URLs
+                    </button>
+
+                    <div id="bulkUrlProgress" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="urlProgressFill"></div>
+                        </div>
+                        <p id="urlProgressText">Processing 0 of 0 URLs...</p>
+                    </div>
+
+                    <div class="alert alert-danger" id="bulkUrlError"></div>
+                    <div class="alert alert-success" id="bulkUrlSuccess"></div>
+
+                    <div id="bulkUrlStats" class="stats-grid" style="display: none;">
+                        <div class="stat-card">
+                            <div class="stat-number" id="urlTotalProcessed">0</div>
+                            <div class="stat-label">Processed</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="urlSuccessCount">0</div>
+                            <div class="stat-label">Successful</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="urlErrorCount">0</div>
+                            <div class="stat-label">Failed</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="urlDuplicateCount">0</div>
+                            <div class="stat-label">Duplicates</div>
+                        </div>
+                    </div>
+
+                    <div id="bulkUrlResults"></div>
+                    
+                    <div class="actions" id="bulkUrlActions" style="display: none; margin-top: 20px;">
+                        <button class="btn btn-success" onclick="copyAllUrlResults()">📋 Copy All</button>
+                        <button class="btn btn-secondary" onclick="downloadAllUrlsAsZip()">📦 Download ZIP</button>
+                        <button class="btn btn-info" onclick="exportUrlsAsCSV()">📊 Export CSV</button>
+                        <button class="btn btn-warning" onclick="exportUrlsAsJSON()">💾 Export JSON</button>
+                    </div>
+                    
+                    <div class="filter-controls" id="urlFilters" style="display: none; margin: 20px 0;">
+                        <h4>🔍 Filter Results</h4>
+                        <button class="btn btn-sm btn-secondary" onclick="filterUrlResults('all')" id="urlFilterAll">All</button>
+                        <button class="btn btn-sm btn-success" onclick="filterUrlResults('success')" id="urlFilterSuccess">✅ Successful</button>
+                        <button class="btn btn-sm btn-danger" onclick="filterUrlResults('failed')" id="urlFilterFailed">❌ Failed</button>
+                        <button class="btn btn-sm btn-warning" onclick="filterUrlResults('duplicates')" id="urlFilterDuplicates">🔄 Duplicates</button>
+                    </div>
+                </div>
+
+                <!-- Extract from Text Tab -->
+                <div class="tab-content" id="text-extract-tab">
+                    <h3>📝 Extract URLs from Text</h3>
+                    <p style="margin-bottom: 20px; color: #5f6368;">
+                        Paste any text containing URLs and we'll automatically extract and convert them to markdown links.
+                    </p>
+                    
+                    <textarea class="textarea" id="textWithUrls" style="min-height: 200px;"
+                              placeholder="Paste your text here... URLs will be automatically detected and extracted:&#10;&#10;Check out this cool video https://youtube.com/watch?v=example&#10;Also see this Reddit post: https://reddit.com/r/example&#10;And this tweet https://twitter.com/user/status/123"></textarea>
+
+                    <div class="options-grid">
+                        <div class="option">
+                            <input type="checkbox" id="extractOnlyUrls" checked>
+                            <label>Extract only URLs (ignore surrounding text)</label>
+                        </div>
+                        <div class="option">
+                            <input type="checkbox" id="removeDuplicateUrls" checked>
+                            <label>Remove duplicate URLs</label>
+                        </div>
+                        <div class="option">
+                            <input type="checkbox" id="autoConvertExtracted" checked>
+                            <label>Auto-convert extracted URLs</label>
+                        </div>
+                    </div>
+
+                    <div class="actions">
+                        <button class="btn btn-primary" onclick="extractUrlsFromText()">🔍 Extract URLs</button>
+                        <button class="btn btn-success" onclick="extractAndConvert()" style="margin-left: 12px;">⚡ Extract & Convert</button>
+                    </div>
+
+                    <div id="extractedUrls" style="display: none; margin-top: 20px;">
+                        <h4>📋 Extracted URLs</h4>
+                        <div class="extracted-urls-container" id="extractedUrlsList"></div>
+                        <div class="actions" style="margin-top: 12px;">
+                            <button class="btn btn-secondary" onclick="copyExtractedUrls()">📋 Copy URLs</button>
+                            <button class="btn btn-primary" onclick="convertExtractedUrls()">🔗 Convert to Markdown</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- URL History Tab -->
+                <div class="tab-content" id="url-history-tab">
+                    <h3>📚 URL Conversion History</h3>
+                    <p style="margin-bottom: 20px; color: #5f6368;">
+                        View and manage all converted URLs from your current session.
+                    </p>
+
+                    <div class="actions" style="margin-bottom: 20px;">
+                        <button class="btn btn-primary" onclick="refreshUrlHistory()">🔄 Refresh</button>
+                        <button class="btn btn-success" onclick="downloadAllUrlHistory()">📦 Download All</button>
+                        <button class="btn btn-warning" onclick="exportUrlHistoryAsCSV()">📊 Export CSV</button>
+                        <button class="btn btn-secondary" onclick="clearUrlHistory()">🗑️ Clear History</button>
+                    </div>
+
+                    <div id="urlHistoryStats" class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number" id="historyUrlCount">0</div>
+                            <div class="stat-label">Total URLs</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="historySuccessfulUrls">0</div>
+                            <div class="stat-label">Successful</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="historyFailedUrls">0</div>
+                            <div class="stat-label">Failed</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="historyUniqueUrls">0</div>
+                            <div class="stat-label">Unique URLs</div>
+                        </div>
+                    </div>
+
+                    <div id="urlHistoryList">
+                        <!-- URL history items will be populated here -->
+                    </div>
+                </div>
+
+                <!-- URL Settings Tab -->
+                <div class="tab-content" id="url-settings-tab">
+                    <h3>⚙️ URL Converter Settings</h3>
+                    
+                    <div class="settings-grid">
+                        <div class="setting-item">
+                            <h4>🔗 URL Processing Options</h4>
+                            <p>Configure how URLs are processed and converted.</p>
+                            
+                            <div class="url-toggle-container">
+                                <label>Use advanced scraping for difficult sites:</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="useAdvancedScraping" onchange="updateScrapingMode()">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="url-toggle-container">
+                                <label>Extract social media metadata:</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="extractSocialMeta" checked onchange="updateSocialMeta()">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="url-toggle-container">
+                                <label>Include domain in failed conversions:</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="includeDomainOnFail" checked onchange="updateDomainOnFail()">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="setting-item">
+                            <h4>🎯 Rate Limiting & Retries</h4>
+                            <p>Control request behavior and retry logic.</p>
+                            
+                            <div class="option">
+                                <input type="number" id="requestDelay" min="0" max="5000" value="1000">
+                                <label>Delay between requests (ms)</label>
+                            </div>
+                            
+                            <div class="option">
+                                <input type="number" id="maxRetries" min="0" max="5" value="2">
+                                <label>Max retry attempts for failed URLs</label>
+                            </div>
+                            
+                            <div class="option">
+                                <input type="number" id="requestTimeout" min="5000" max="30000" value="10000">
+                                <label>Request timeout (ms)</label>
+                            </div>
+                        </div>
+
+                        <div class="setting-item">
+                            <h4>📄 Output Format</h4>
+                            <p>Customize the markdown link format.</p>
+                            
+                            <div class="url-toggle-container">
+                                <label>Link format:</label>
+                                <select id="linkFormat" onchange="updateLinkFormat()">
+                                    <option value="[title](url)">[title](url) - Standard</option>
+                                    <option value="[[title]](url)">[[title]](url) - Obsidian</option>
+                                    <option value="[title](url 'description')">[title](url 'description') - With tooltip</option>
+                                </select>
+                            </div>
+
+                            <div class="url-toggle-container">
+                                <label>Include original URL in output:</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="includeOriginalUrl" onchange="updateIncludeOriginal()">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="setting-item">
+                            <h4>🚫 Failed URL Handling</h4>
+                            <p>What to do with URLs that fail to convert.</p>
+                            
+                            <div class="actions">
+                                <button class="btn btn-warning" onclick="retryAllFailedUrls()">🔄 Retry All Failed</button>
+                                <button class="btn btn-secondary" onclick="clearFailedUrls()">🗑️ Clear Failed</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentVideoData = null;
+        let allExtractedData = [];
+        let settings = {
+            obsidianUrls: false,
+            stitchedMode: true,
+            customApiKey: '',
+            defaultMaxVideos: 25,
+            autoIncludeDescription: true,
+            autoIncludeStats: true,
+            backendUrl: 'http://localhost:5001/api',
+            includeTimestamps: true,
+            detectDuplicates: true
+        };
+
+        // YouTube Data API v3 configuration  
+        let YOUTUBE_API_KEY = 'AIzaSyAV_j5IsZlkXNtkadQ7HQiocTYysm9kvH0';
+        const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3';
+        
+        // Backend API configuration
+        let BACKEND_API_BASE = 'http://localhost:5001/api';
+
+        // URL Converter data storage
+        let allExtractedUrls = [];
+        let currentUrlData = null;
+        let failedUrls = [];
+
+        // URL converter settings
+        let urlSettings = {
+            useAdvancedScraping: false,
+            extractSocialMeta: true,
+            includeDomainOnFail: true,
+            requestDelay: 1000,
+            maxRetries: 2,
+            requestTimeout: 10000,
+            linkFormat: '[title](url)',
+            includeOriginalUrl: false
+        };
+
+        // Load settings on page load
+        window.addEventListener('load', function() {
+            loadSettings();
+            loadUrlSettings();
+            checkBackendStatus();
+            refreshHistory();
+            refreshUrlHistory();
+        });
+
+        // Main tab management for switching between YouTube Transcript and URL Converter
+        function switchMainTab(tabName) {
+            document.querySelectorAll('.main-tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tabs button').forEach(t => t.classList.remove('active'));
+            
+            document.getElementById(tabName + '-section').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // URL tab management within the URL converter section
+        function switchUrlTab(tabName) {
+            // Only switch tabs within the URL converter section
+            const urlSection = document.getElementById('urlconverter-section');
+            urlSection.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            urlSection.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
+            
+            document.getElementById(tabName + '-tab').classList.add('active');
+            event.target.classList.add('active');
+
+            // Update UI based on tab
+            if (tabName === 'url-history') {
+                refreshUrlHistory();
+            } else if (tabName === 'url-settings') {
+                updateUrlSettingsDisplay();
+            }
+        }
+
+        // URL extraction using comprehensive regex
+        function extractUrlsFromText() {
+            const text = document.getElementById('textWithUrls').value.trim();
+            if (!text) {
+                showAlert('Please enter text to extract URLs from', 'error', 'urlError');
+                return;
+            }
+
+            // Comprehensive URL regex pattern
+            const urlRegex = /(https?:\/\/(?:[-\w.])+(?:\:[0-9]+)?(?:\/(?:[\w\/_.])*)?(?:\?(?:[\w&=%.])*)?(?:\#(?:[\w.])*)?)/gi;
+            const extractedUrls = [...text.matchAll(urlRegex)].map(match => match[0]);
+            
+            if (extractedUrls.length === 0) {
+                showAlert('No URLs found in the provided text', 'warning', 'urlWarning');
+                return;
+            }
+
+            // Remove duplicates if option is enabled
+            const removeDuplicates = document.getElementById('removeDuplicateUrls').checked;
+            const urls = removeDuplicates ? [...new Set(extractedUrls)] : extractedUrls;
+
+            displayExtractedUrls(urls);
+            
+            showAlert(`Extracted ${urls.length} URLs from text (${removeDuplicates ? 'duplicates removed' : 'with duplicates'})`, 'success', 'urlSuccess');
+        }
+
+        function displayExtractedUrls(urls) {
+            const container = document.getElementById('extractedUrlsList');
+            
+            const urlsHtml = urls.map(url => {
+                const domain = new URL(url).hostname;
+                return `
+                    <div class="extracted-url-item">
+                        <span class="url-domain">${domain}</span>
+                        <span class="url-link">${url}</span>
+                    </div>
+                `;
+            }).join('');
+            
+            container.innerHTML = urlsHtml;
+            showElement('extractedUrls');
+            
+            // Store extracted URLs for conversion
+            window.currentExtractedUrls = urls;
+        }
+
+        function copyExtractedUrls() {
+            if (!window.currentExtractedUrls) {
+                showAlert('No URLs extracted to copy', 'error', 'urlError');
+                return;
+            }
+            
+            const urlsText = window.currentExtractedUrls.join('\n');
+            navigator.clipboard.writeText(urlsText).then(() => {
+                showAlert('Extracted URLs copied to clipboard!', 'success', 'urlSuccess');
+            });
+        }
+
+        function convertExtractedUrls() {
+            if (!window.currentExtractedUrls) {
+                showAlert('No URLs extracted to convert', 'error', 'urlError');
+                return;
+            }
+            
+            // Switch to bulk URLs tab and populate with extracted URLs
+            switchUrlTab('bulk-urls');
+            document.getElementById('bulkUrlsInput').value = window.currentExtractedUrls.join('\n');
+            
+            // Auto-start conversion if option is enabled
+            if (document.getElementById('autoConvertExtracted').checked) {
+                setTimeout(() => processBulkUrls(), 500);
+            }
+        }
+
+        function extractAndConvert() {
+            extractUrlsFromText();
+            setTimeout(() => {
+                if (window.currentExtractedUrls && window.currentExtractedUrls.length > 0) {
+                    convertExtractedUrls();
+                }
+            }, 1000);
+        }
+
+        // Single URL conversion
+        async function convertSingleUrl() {
+            const url = document.getElementById('singleUrl').value.trim();
+            if (!url) {
+                showAlert('Please enter a URL to convert', 'error', 'urlError');
+                return;
+            }
+
+            if (!isValidUrl(url)) {
+                showAlert('Please enter a valid URL (must start with http:// or https://)', 'error', 'urlError');
+                return;
+            }
+
+            // Reset UI
+            ['urlError', 'urlSuccess', 'urlWarning', 'urlResults'].forEach(hideElement);
+            showElement('urlLoading');
+            document.getElementById('urlLoadingText').textContent = 'Converting URL to markdown...';
+
+            try {
+                const urlData = await fetchUrlMetadata(url);
+                currentUrlData = urlData;
+                
+                displaySingleUrlResult(urlData);
+                
+                // Add to history
+                allExtractedUrls.push(urlData);
+                
+                showAlert(`URL converted successfully! Title: "${urlData.title}"`, 'success', 'urlSuccess');
+                
+            } catch (error) {
+                console.error('URL conversion failed:', error);
+                
+                // Create fallback data
+                const fallbackData = {
+                    url: url,
+                    title: urlSettings.includeDomainOnFail ? new URL(url).hostname : 'Unable to fetch title',
+                    description: 'Failed to extract metadata',
+                    domain: new URL(url).hostname,
+                    success: false,
+                    error: error.message,
+                    convertedAt: new Date().toISOString()
+                };
+                
+                currentUrlData = fallbackData;
+                displaySingleUrlResult(fallbackData);
+                failedUrls.push(fallbackData);
+                
+                showAlert(`URL conversion failed: ${error.message}`, 'error', 'urlError');
+            } finally {
+                hideElement('urlLoading');
+            }
+        }
+
+        function isValidUrl(string) {
+            try {
+                new URL(string);
+                return string.startsWith('http://') || string.startsWith('https://');
+            } catch (_) {
+                return false;
+            }
+        }
+
+        async function fetchUrlMetadata(url) {
+            // First try the backend API for more reliable scraping
+            try {
+                const response = await fetch(`${BACKEND_API_BASE}/extract-url-metadata`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        url: url,
+                        includeDescription: document.getElementById('includeDescription').checked,
+                        includeOgData: document.getElementById('includeOgData').checked
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    return {
+                        url: url,
+                        title: data.title || 'No title found',
+                        description: data.description || 'No description available',
+                        domain: new URL(url).hostname,
+                        ogData: data.ogData || {},
+                        success: true,
+                        convertedAt: new Date().toISOString()
+                    };
+                }
+            } catch (backendError) {
+                console.log('Backend extraction failed, trying frontend fallback:', backendError);
+            }
+
+            // Fallback to client-side approach using a proxy service
+            try {
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+                const response = await fetch(proxyUrl);
+                const data = await response.json();
+                
+                if (data.contents) {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(data.contents, 'text/html');
+                    
+                    const title = extractTitle(doc, url);
+                    const description = extractDescription(doc);
+                    
+                    return {
+                        url: url,
+                        title: title,
+                        description: description,
+                        domain: new URL(url).hostname,
+                        success: true,
+                        convertedAt: new Date().toISOString()
+                    };
+                }
+            } catch (proxyError) {
+                console.log('Proxy extraction failed:', proxyError);
+            }
+
+            throw new Error('Unable to fetch URL metadata from any source');
+        }
+
+        function extractTitle(doc, url) {
+            // Try various title extraction methods
+            let title = doc.querySelector('title')?.textContent?.trim();
+            
+            if (!title || title.length < 3) {
+                title = doc.querySelector('meta[property="og:title"]')?.content?.trim();
+            }
+            
+            if (!title || title.length < 3) {
+                title = doc.querySelector('meta[name="twitter:title"]')?.content?.trim();
+            }
+            
+            if (!title || title.length < 3) {
+                title = doc.querySelector('h1')?.textContent?.trim();
+            }
+            
+            if (!title || title.length < 3) {
+                // Extract from URL as last resort
+                const domain = new URL(url).hostname;
+                title = domain.replace('www.', '');
+            }
+            
+            return title || 'Untitled';
+        }
+
+        function extractDescription(doc) {
+            let description = doc.querySelector('meta[name="description"]')?.content?.trim();
+            
+            if (!description) {
+                description = doc.querySelector('meta[property="og:description"]')?.content?.trim();
+            }
+            
+            if (!description) {
+                description = doc.querySelector('meta[name="twitter:description"]')?.content?.trim();
+            }
+            
+            return description || 'No description available';
+        }
+
+        function displaySingleUrlResult(urlData) {
+            const { url, title, description, domain, success, error } = urlData;
+            
+            const statusClass = success ? 'success' : 'error';
+            const statusText = success ? '✅ Success' : '❌ Failed';
+            
+            const cardHtml = `
+                <div class="url-card ${statusClass}">
+                    <div class="url-result-header">
+                        <span class="url-result-status ${statusClass}">${statusText}</span>
+                        <span style="color: #64748b; font-size: 0.9rem;">${domain}</span>
+                        ${!success ? `<button class="retry-button" onclick="retrySingleUrl()">🔄 Retry</button>` : ''}
+                    </div>
+                    
+                    <h4>${title}</h4>
+                    
+                    <div class="url-meta">
+                        <strong>URL:</strong> <a href="${url}" target="_blank">${url}</a>
+                    </div>
+                    
+                    ${description !== 'No description available' ? `
+                        <div class="url-meta">
+                            <strong>Description:</strong> ${description}
+                        </div>
+                    ` : ''}
+                    
+                    ${error ? `
+                        <div class="url-meta" style="color: var(--danger);">
+                            <strong>Error:</strong> ${error}
+                        </div>
+                    ` : ''}
+                    
+                    ${success ? `
+                        <div class="markdown-output">
+                            <strong>Markdown:</strong><br>
+                            ${generateMarkdownLink(urlData)}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            document.getElementById('urlCard').innerHTML = cardHtml;
+            showElement('urlResults');
+        }
+
+        function generateMarkdownLink(urlData) {
+            const { url, title, description } = urlData;
+            const format = urlSettings.linkFormat;
+            
+            switch (format) {
+                case '[[title]](url)':
+                    return `[[${title}]](${url})`;
+                case '[title](url \'description\')':
+                    return `[${title}](${url} '${description.substring(0, 100)}...')`;
+                default:
+                    return `[${title}](${url})`;
+            }
+        }
+
+        function copyUrlMarkdown() {
+            if (!currentUrlData || !currentUrlData.success) {
+                showAlert('No successful URL conversion to copy!', 'error', 'urlError');
+                return;
+            }
+            
+            const markdown = generateMarkdownLink(currentUrlData);
+            navigator.clipboard.writeText(markdown).then(() => {
+                showAlert('Markdown link copied to clipboard!', 'success', 'urlSuccess');
+            });
+        }
+
+        function copyUrlPlain() {
+            if (!currentUrlData) {
+                showAlert('No URL data to copy!', 'error', 'urlError');
+                return;
+            }
+            
+            const plainText = `${currentUrlData.title}\n${currentUrlData.url}\n${currentUrlData.description}`;
+            navigator.clipboard.writeText(plainText).then(() => {
+                showAlert('Plain text copied to clipboard!', 'success', 'urlSuccess');
+            });
+        }
+
+        function downloadUrlMarkdown() {
+            if (!currentUrlData) {
+                showAlert('No URL data to download!', 'error', 'urlError');
+                return;
+            }
+            
+            const markdown = generateMarkdownLink(currentUrlData);
+            const filename = `${sanitizeFilename(currentUrlData.title)}.md`;
+            downloadFile(markdown, filename, 'text/markdown');
+        }
+
+        function retrySingleUrl() {
+            if (currentUrlData && currentUrlData.url) {
+                document.getElementById('singleUrl').value = currentUrlData.url;
+                convertSingleUrl();
+            }
+        }
+
+        // URL Settings management
+        function loadUrlSettings() {
+            const savedSettings = localStorage.getItem('urlConverterSettings');
+            if (savedSettings) {
+                urlSettings = { ...urlSettings, ...JSON.parse(savedSettings) };
+                applyUrlSettings();
+            }
+        }
+
+        function saveUrlSettings() {
+            localStorage.setItem('urlConverterSettings', JSON.stringify(urlSettings));
+            applyUrlSettings();
+        }
+
+        function applyUrlSettings() {
+            document.getElementById('useAdvancedScraping').checked = urlSettings.useAdvancedScraping;
+            document.getElementById('extractSocialMeta').checked = urlSettings.extractSocialMeta;
+            document.getElementById('includeDomainOnFail').checked = urlSettings.includeDomainOnFail;
+            document.getElementById('requestDelay').value = urlSettings.requestDelay;
+            document.getElementById('maxRetries').value = urlSettings.maxRetries;
+            document.getElementById('requestTimeout').value = urlSettings.requestTimeout;
+            document.getElementById('linkFormat').value = urlSettings.linkFormat;
+            document.getElementById('includeOriginalUrl').checked = urlSettings.includeOriginalUrl;
+        }
+
+        function updateUrlSettingsDisplay() {
+            applyUrlSettings();
+        }
+
+        // Setting update functions
+        function updateScrapingMode() {
+            urlSettings.useAdvancedScraping = document.getElementById('useAdvancedScraping').checked;
+            saveUrlSettings();
+            showAlert('Scraping mode updated!', 'success', 'urlSuccess');
+        }
+
+        function updateSocialMeta() {
+            urlSettings.extractSocialMeta = document.getElementById('extractSocialMeta').checked;
+            saveUrlSettings();
+            showAlert('Social media metadata setting updated!', 'success', 'urlSuccess');
+        }
+
+        function updateDomainOnFail() {
+            urlSettings.includeDomainOnFail = document.getElementById('includeDomainOnFail').checked;
+            saveUrlSettings();
+            showAlert('Domain fallback setting updated!', 'success', 'urlSuccess');
+        }
+
+        function updateLinkFormat() {
+            urlSettings.linkFormat = document.getElementById('linkFormat').value;
+            saveUrlSettings();
+            showAlert('Link format updated!', 'success', 'urlSuccess');
+        }
+
+        function updateIncludeOriginal() {
+            urlSettings.includeOriginalUrl = document.getElementById('includeOriginalUrl').checked;
+            saveUrlSettings();
+            showAlert('Original URL inclusion setting updated!', 'success', 'urlSuccess');
+        }
+
+        // URL History management
+        function refreshUrlHistory() {
+            const historyList = document.getElementById('urlHistoryList');
+            const historyStats = {
+                totalUrls: allExtractedUrls.length,
+                successfulUrls: allExtractedUrls.filter(u => u.success).length,
+                failedUrls: failedUrls.length,
+                uniqueUrls: new Set(allExtractedUrls.map(u => u.url)).size
+            };
+            
+            // Update stats display
+            document.getElementById('historyUrlCount').textContent = historyStats.totalUrls;
+            document.getElementById('historySuccessfulUrls').textContent = historyStats.successfulUrls;
+            document.getElementById('historyFailedUrls').textContent = historyStats.failedUrls;
+            document.getElementById('historyUniqueUrls').textContent = historyStats.uniqueUrls;
+            
+            // Generate history list
+            if (allExtractedUrls.length === 0) {
+                historyList.innerHTML = '<p style="text-align: center; color: #5f6368; margin-top: 40px;">No URLs converted yet. Convert some URLs to see them here!</p>';
+                return;
+            }
+            
+            const historyHtml = allExtractedUrls.map((urlData, index) => `
+                <div class="download-history-item ${urlData.success ? '' : 'error'}">
+                    <h4>${urlData.title}</h4>
+                    <p><strong>URL:</strong> <a href="${urlData.url}" target="_blank">${urlData.url}</a></p>
+                    <p><strong>Domain:</strong> ${urlData.domain}</p>
+                    <p><strong>Converted:</strong> ${new Date(urlData.convertedAt).toLocaleString()}</p>
+                    <p><strong>Status:</strong> ${urlData.success ? '✅ Success' : '❌ Failed'}</p>
+                    
+                    <div class="actions" style="margin-top: 12px;">
+                        ${urlData.success ? `
+                            <button class="btn btn-sm btn-primary" onclick="copyUrlHistoryItem(${index})">📋 Copy Markdown</button>
+                            <button class="btn btn-sm btn-secondary" onclick="downloadUrlHistoryItem(${index})">📄 Download</button>
+                        ` : `
+                            <button class="btn btn-sm btn-warning" onclick="retryUrlHistoryItem(${index})">🔄 Retry</button>
+                        `}
+                        <button class="btn btn-sm btn-warning" onclick="removeUrlHistoryItem(${index})">🗑️ Remove</button>
+                    </div>
+                </div>
+            `).join('');
+            
+            historyList.innerHTML = historyHtml;
+        }
+
+        function copyUrlHistoryItem(index) {
+            if (index >= 0 && index < allExtractedUrls.length) {
+                const urlData = allExtractedUrls[index];
+                if (urlData.success) {
+                    const markdown = generateMarkdownLink(urlData);
+                    navigator.clipboard.writeText(markdown).then(() => {
+                        showAlert('Markdown link copied to clipboard!', 'success', 'urlSuccess');
+                    });
+                }
+            }
+        }
+
+        function downloadUrlHistoryItem(index) {
+            if (index >= 0 && index < allExtractedUrls.length) {
+                const urlData = allExtractedUrls[index];
+                if (urlData.success) {
+                    const markdown = generateMarkdownLink(urlData);
+                    const filename = `${sanitizeFilename(urlData.title)}.md`;
+                    downloadFile(markdown, filename, 'text/markdown');
+                }
+            }
+        }
+
+        function retryUrlHistoryItem(index) {
+            if (index >= 0 && index < allExtractedUrls.length) {
+                const urlData = allExtractedUrls[index];
+                // Switch to single URL tab and retry
+                switchUrlTab('single-url');
+                document.getElementById('singleUrl').value = urlData.url;
+                setTimeout(() => convertSingleUrl(), 500);
+            }
+        }
+
+        function removeUrlHistoryItem(index) {
+            if (index >= 0 && index < allExtractedUrls.length && 
+                confirm('Are you sure you want to remove this URL from history?')) {
+                allExtractedUrls.splice(index, 1);
+                refreshUrlHistory();
+                showAlert('URL removed from history', 'success', 'urlSuccess');
+            }
+        }
+
+        function downloadAllUrlHistory() {
+            if (allExtractedUrls.length === 0) {
+                showAlert('No URL history to download!', 'error', 'urlError');
+                return;
+            }
+            
+            const successfulUrls = allExtractedUrls.filter(u => u.success);
+            if (successfulUrls.length === 0) {
+                showAlert('No successful URL conversions to download!', 'error', 'urlError');
+                return;
+            }
+            
+            const markdown = successfulUrls.map(urlData => generateMarkdownLink(urlData)).join('\n');
+            const filename = `url_conversions_${new Date().toISOString().split('T')[0]}.md`;
+            downloadFile(markdown, filename, 'text/markdown');
+        }
+
+        function exportUrlHistoryAsCSV() {
+            if (allExtractedUrls.length === 0) {
+                showAlert('No URL history to export!', 'error', 'urlError');
+                return;
+            }
+            
+            const header = 'URL,Title,Description,Domain,Status,Converted At,Markdown Link\n';
+            const csvData = allExtractedUrls.map(urlData => {
+                const markdown = urlData.success ? generateMarkdownLink(urlData) : 'N/A';
+                return [
+                    `"${urlData.url}"`,
+                    `"${urlData.title.replace(/"/g, '""')}"`,
+                    `"${urlData.description.replace(/"/g, '""')}"`,
+                    urlData.domain,
+                    urlData.success ? 'Success' : 'Failed',
+                    urlData.convertedAt,
+                    `"${markdown.replace(/"/g, '""')}"`
+                ].join(',');
+            }).join('\n');
+            
+            const filename = `url_conversions_${new Date().toISOString().split('T')[0]}.csv`;
+            downloadFile(header + csvData, filename, 'text/csv');
+        }
+
+        function clearUrlHistory() {
+            if (allExtractedUrls.length === 0) {
+                showAlert('URL history is already empty!', 'warning', 'urlWarning');
+                return;
+            }
+            
+            if (confirm('This will clear all converted URLs from your session. Are you sure?')) {
+                allExtractedUrls = [];
+                failedUrls = [];
+                currentUrlData = null;
+                refreshUrlHistory();
+                showAlert('URL history cleared!', 'success', 'urlSuccess');
+            }
+        }
+
+        function retryAllFailedUrls() {
+            if (failedUrls.length === 0) {
+                showAlert('No failed URLs to retry!', 'warning', 'urlWarning');
+                return;
+            }
+            
+            // Switch to bulk URLs tab and populate with failed URLs
+            switchUrlTab('bulk-urls');
+            const failedUrlsList = failedUrls.map(u => u.url).join('\n');
+            document.getElementById('bulkUrlsInput').value = failedUrlsList;
+            
+            showAlert(`${failedUrls.length} failed URLs loaded for retry`, 'success', 'urlSuccess');
+        }
+
+        function clearFailedUrls() {
+            if (failedUrls.length === 0) {
+                showAlert('No failed URLs to clear!', 'warning', 'urlWarning');
+                return;
+            }
+            
+            if (confirm('This will clear all failed URL conversion attempts. Are you sure?')) {
+                failedUrls = [];
+                showAlert('Failed URLs cleared!', 'success', 'urlSuccess');
+            }
+        }
+
+        // Tab management
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(tabName + '-tab').classList.add('active');
+            event.target.classList.add('active');
+
+            // Update UI based on tab
+            if (tabName === 'history') {
+                refreshHistory();
+            } else if (tabName === 'settings') {
+                updateSettingsDisplay();
+            }
+        }
+
+        // Settings management
+        function loadSettings() {
+            const savedSettings = localStorage.getItem('transcriptExtractorSettings');
+            if (savedSettings) {
+                settings = { ...settings, ...JSON.parse(savedSettings) };
+                applySettings();
+            }
+        }
+
+        function saveSettings() {
+            localStorage.setItem('transcriptExtractorSettings', JSON.stringify(settings));
+            applySettings();
+        }
+
+        function applySettings() {
+            document.getElementById('obsidianUrls').checked = settings.obsidianUrls;
+            document.getElementById('stitchedMode').checked = settings.stitchedMode;
+            document.getElementById('customApiKey').value = settings.customApiKey;
+            document.getElementById('defaultMaxVideos').value = settings.defaultMaxVideos;
+            document.getElementById('autoIncludeDescription').checked = settings.autoIncludeDescription;
+            document.getElementById('autoIncludeStats').checked = settings.autoIncludeStats;
+            document.getElementById('backendUrl').value = settings.backendUrl;
+            document.getElementById('includeTimestamps').checked = settings.includeTimestamps;
+            document.getElementById('detectDuplicates').checked = settings.detectDuplicates;
+            
+            // Update API key if custom one is set
+            if (settings.customApiKey) {
+                YOUTUBE_API_KEY = settings.customApiKey;
+            }
+            
+            // Update backend URL
+            BACKEND_API_BASE = settings.backendUrl;
+        }
+
+        function updateSettingsDisplay() {
+            applySettings();
+        }
+
+        // Settings functions
+        function updateApiKey() {
+            const apiKey = document.getElementById('customApiKey').value.trim();
+            settings.customApiKey = apiKey;
+            if (apiKey) {
+                YOUTUBE_API_KEY = apiKey;
+                showAlert('API key updated successfully!', 'success');
+            } else {
+                YOUTUBE_API_KEY = 'AIzaSyAV_j5IsZlkXNtkadQ7HQiocTYysm9kvH0'; // Default key
+                showAlert('Reverted to default API key', 'warning');
+            }
+            saveSettings();
+        }
+
+        function updateUrlDisplay() {
+            settings.obsidianUrls = document.getElementById('obsidianUrls').checked;
+            saveSettings();
+            showAlert('URL display mode updated!', 'success');
+        }
+
+        function updateStitchedMode() {
+            settings.stitchedMode = document.getElementById('stitchedMode').checked;
+            saveSettings();
+            showAlert('Paragraph mode updated!', 'success');
+        }
+
+        function testBackendConnection() {
+            const url = document.getElementById('backendUrl').value.trim();
+            settings.backendUrl = url;
+            BACKEND_API_BASE = url;
+            
+            fetch(`${url}/health`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('backendStatus').innerHTML = 
+                        '<span class="api-status connected">✅ Backend Connected</span>';
+                    showAlert('Backend connection successful!', 'success');
+                })
+                .catch(error => {
+                    document.getElementById('backendStatus').innerHTML = 
+                        '<span class="api-status disconnected">❌ Backend Disconnected</span>';
+                    showAlert('Backend connection failed: ' + error.message, 'error');
+                });
+            
+            saveSettings();
+        }
+
+        function checkBackendStatus() {
+            fetch(`${BACKEND_API_BASE}/health`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('apiStatus').className = 'api-status connected';
+                    document.getElementById('apiStatus').textContent = '✅ Connected';
+                })
+                .catch(error => {
+                    document.getElementById('apiStatus').className = 'api-status disconnected';
+                    document.getElementById('apiStatus').textContent = '❌ Disconnected';
+                });
+        }
+
+        function exportSettings() {
+            const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'transcript-extractor-settings.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function clearAllLocalData() {
+            if (confirm('This will clear all settings and extracted data. Are you sure?')) {
+                localStorage.clear();
+                allExtractedData = [];
+                currentVideoData = null;
+                showAlert('All local data cleared!', 'success');
+                location.reload();
+            }
+        }
+
+        // Utility functions
+        function extractVideoId(url) {
+            const patterns = [
+                /(?:v=|\/)([0-9A-Za-z_-]{11}).*/,
+                /(?:embed\/)([0-9A-Za-z_-]{11})/,
+                /(?:watch\?v=|\/)([0-9A-Za-z_-]{11})/
+            ];
+            for (const pattern of patterns) {
+                const match = url.match(pattern);
+                if (match) return match[1];
+            }
+            if (url.length === 11 && /^[0-9A-Za-z_-]+$/.test(url)) return url;
+            return null;
+        }
+
+        function isPlaylistUrl(url) {
+            // Enhanced playlist URL detection
+            return url.includes('playlist') || 
+                   url.includes('list=') || 
+                   /[?&]list=/.test(url);
+        }
+
+        function formatNumber(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toString();
+        }
+
+        function formatTimestamp(seconds) {
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            return h > 0 ? 
+                `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}` :
+                `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        function showElement(id) { document.getElementById(id).style.display = 'block'; }
+        function hideElement(id) { document.getElementById(id).style.display = 'none'; }
+
+        function showAlert(message, type = 'success', elementId = type === 'error' ? 'error' : 'success') {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.style.display = 'block';
+            if (type === 'success') setTimeout(() => hideElement(elementId), 5000);
+        }
+
+        // Enhanced transcript extraction using backend API
+        async function extractTranscriptFromBackend(url) {
+            try {
+                const response = await fetch(`${BACKEND_API_BASE}/extract`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: url })
+                });
+
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Backend extraction failed');
+                }
+
+                return data;
+            } catch (error) {
+                console.error('Backend extraction failed:', error);
+                throw error;
+            }
+        }
+
+        // Enhanced metadata extraction with REAL YouTube Data API
+        async function getEnhancedMetadata(videoId) {
+            try {
+                // Get video details from YouTube Data API v3
+                const videoUrl = `${YOUTUBE_API_BASE}/videos?part=snippet,statistics,contentDetails&id=${videoId}&key=${YOUTUBE_API_KEY}`;
+                const response = await fetch(videoUrl);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.items && data.items.length > 0) {
+                        const video = data.items[0];
+                        const snippet = video.snippet;
+                        const statistics = video.statistics;
+                        const contentDetails = video.contentDetails;
+                        
+                        // Parse duration (PT4M13S format)
+                        const duration = parseDuration(contentDetails.duration);
+                        
+                        return {
+                            title: snippet.title,
+                            channel: snippet.channelTitle,
+                            thumbnail: snippet.thumbnails.maxres?.url || snippet.thumbnails.high?.url || snippet.thumbnails.default.url,
+                            views: parseInt(statistics.viewCount) || 0,
+                            likes: parseInt(statistics.likeCount) || 0,
+                            comments: parseInt(statistics.commentCount) || 0,
+                            duration: duration,
+                            publishDate: snippet.publishedAt,
+                            description: snippet.description,
+                            tags: snippet.tags || [],
+                            categoryId: snippet.categoryId,
+                            channelId: snippet.channelId,
+                            defaultLanguage: snippet.defaultLanguage
+                        };
+                    }
+                }
+                
+                // Fallback to oEmbed if API fails
+                const oembedResponse = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+                if (oembedResponse.ok) {
+                    const oembedData = await oembedResponse.json();
+                    return {
+                        title: oembedData.title,
+                        channel: oembedData.author_name,
+                        thumbnail: oembedData.thumbnail_url,
+                        views: 'API Error',
+                        likes: 'API Error',
+                        comments: 'API Error',
+                        duration: 'Unknown',
+                        publishDate: 'Unknown',
+                        description: 'Description not available'
+                    };
+                }
+                
+                throw new Error('Both YouTube API and oEmbed failed');
+                
+            } catch (error) {
+                console.error('Enhanced metadata extraction failed:', error);
+                return {
+                    title: 'Video Title (Unable to fetch)',
+                    channel: 'Channel Name (Unable to fetch)',
+                    thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+                    views: 'Error',
+                    likes: 'Error', 
+                    comments: 'Error',
+                    duration: 'Unknown',
+                    publishDate: 'Unknown',
+                    description: 'Metadata not available'
+                };
+            }
+        }
+
+        // Parse YouTube duration format (PT4M13S) to seconds
+        function parseDuration(duration) {
+            const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+            if (!match) return 'Unknown';
+            
+            const hours = parseInt(match[1]) || 0;
+            const minutes = parseInt(match[2]) || 0;
+            const seconds = parseInt(match[3]) || 0;
+            
+            return hours * 3600 + minutes * 60 + seconds;
+        }
+
+        // Single video extraction with backend support
+        async function extractSingleVideo() {
+            const url = document.getElementById('videoUrl').value.trim();
+            if (!url) {
+                showAlert('Please enter a YouTube URL', 'error');
+                return;
+            }
+
+            const videoId = extractVideoId(url);
+            if (!videoId) {
+                showAlert('Invalid YouTube URL', 'error');
+                return;
+            }
+
+            // Reset UI
+            ['error', 'success', 'warning', 'results'].forEach(hideElement);
+            showElement('loading');
+            document.getElementById('loadingText').textContent = 'Extracting transcript from backend...';
+
+            try {
+                // Use backend for transcript extraction
+                const data = await extractTranscriptFromBackend(url);
+                
+                currentVideoData = {
+                    videoId: data.videoId,
+                    metadata: data.metadata,
+                    transcript: data.transcript,
+                    url: data.metadata.url,
+                    transcriptLanguage: data.transcriptLanguage,
+                    extractedAt: data.extractedAt
+                };
+
+                allExtractedData.push(currentVideoData);
+                displaySingleVideoResults();
+                showAlert(`Transcript extracted successfully! (Language: ${data.transcriptLanguage})`);
+
+            } catch (error) {
+                console.error('Extraction failed:', error);
+                
+                // Fallback to frontend method with demo data
+                showAlert(`Backend extraction failed: ${error.message}. Showing demo data.`, 'warning');
+                
+                try {
+                    const metadata = await getEnhancedMetadata(videoId);
+                    const demoTranscript = [
+                        { start: 0, text: `[DEMO] This is a demonstration transcript for video ${videoId}` },
+                        { start: 4, text: "[DEMO] Real transcript extraction failed - using fallback" },
+                        { start: 8, text: "[DEMO] Backend server might not be running on localhost:5001" },
+                        { start: 12, text: "[DEMO] Start the backend with: python3 app.py" },
+                        { start: 16, text: "[DEMO] This shows the formatting and functionality" }
+                    ];
+
+                    currentVideoData = {
+                        videoId,
+                        metadata,
+                        transcript: demoTranscript,
+                        url: `https://www.youtube.com/watch?v=${videoId}`,
+                        extractedAt: new Date().toISOString()
+                    };
+
+                    allExtractedData.push(currentVideoData);
+                    displaySingleVideoResults();
+                } catch (fallbackError) {
+                    showAlert(`Both backend and fallback failed: ${fallbackError.message}`, 'error');
+                }
+            } finally {
+                hideElement('loading');
+            }
+        }
+
+        function displaySingleVideoResults() {
+            const { metadata, transcript, url } = currentVideoData;
+            
+            // Format publish date
+            const publishDate = metadata.publishDate !== 'Unknown' ? 
+                new Date(metadata.publishDate).toLocaleDateString() : 'Unknown';
+            
+            // Create video card with enhanced metadata
+            const videoCardHtml = `
+                <div class="video-card">
+                    <img src="${metadata.thumbnail}" alt="Video thumbnail" class="video-thumbnail" onerror="this.src='https://img.youtube.com/vi/${currentVideoData.videoId}/maxresdefault.jpg'">
+                    <div class="video-info">
+                        <h3>${metadata.title}</h3>
+                        <div class="video-meta">Channel: ${metadata.channel}</div>
+                        <div class="video-meta">URL: <a href="${url}" target="_blank">${url}</a></div>
+                        ${metadata.views !== 'Unknown' && metadata.views !== 'Error' ? `<div class="video-meta">👁️ Views: ${formatNumber(metadata.views)}</div>` : ''}
+                        ${metadata.likes !== 'Unknown' && metadata.likes !== 'Error' ? `<div class="video-meta">👍 Likes: ${formatNumber(metadata.likes)}</div>` : ''}
+                        ${metadata.comments !== 'Unknown' && metadata.comments !== 'Error' ? `<div class="video-meta">💬 Comments: ${formatNumber(metadata.comments)}</div>` : ''}
+                        ${metadata.duration !== 'Unknown' && typeof metadata.duration === 'number' ? `<div class="video-meta">⏱️ Duration: ${formatTimestamp(metadata.duration)}</div>` : ''}
+                        ${publishDate !== 'Unknown' ? `<div class="video-meta">📅 Published: ${publishDate}</div>` : ''}
+                        ${metadata.description && metadata.description !== 'Description not available' ? `<div class="video-meta">📝 Description: ${metadata.description.substring(0, 150)}${metadata.description.length > 150 ? '...' : ''}</div>` : ''}
+                    </div>
+                </div>
+            `;
+            document.getElementById('videoCard').innerHTML = videoCardHtml;
+
+            // Group transcript lines into paragraphs
+            const paragraphs = groupTranscriptIntoParagraphs(transcript);
+
+            // Display transcript with multiple view options
+            const transcriptHtml = `
+                <div class="transcript-container">
+                    <h4 style="margin-bottom: 16px; color: var(--dark);">📝 Transcript (${transcript.length} lines, ${paragraphs.length} paragraphs)</h4>
+                    <div class="transcript-controls">
+                        <button class="btn btn-secondary" onclick="toggleAllParagraphs()" id="toggleAllBtn">📖 Expand All</button>
+                        <button class="btn btn-primary" onclick="switchTranscriptView('stitched')" id="stitchedBtn">🧵 Stitched Paragraphs</button>
+                        <button class="btn btn-secondary" onclick="switchTranscriptView('raw')" id="rawBtn">📝 Raw Lines</button>
+                        <span style="margin-left: 12px; color: #5f6368; font-size: 0.9rem;">Click timestamps to jump to that time in the video</span>
+                    </div>
+                    
+                    <!-- Stitched Paragraphs View -->
+                    <div class="stitched-view" id="stitchedView">
+                        ${paragraphs.map(para => `
+                            <div class="stitched-paragraph">
+                                ${para.stitchedText}
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <!-- Collapsible Paragraphs View -->
+                    <div class="transcript-paragraphs" id="paragraphView" style="display: none;">
+                        ${paragraphs.map((para, index) => `
+                            <div class="transcript-paragraph" data-paragraph="${index}">
+                                <div class="paragraph-header" onclick="toggleParagraph(${index})">
+                                    <span class="paragraph-toggle">▶️</span>
+                                    <a href="${url}&t=${Math.floor(para.startTime)}" target="_blank" class="clickable-timestamp">(${formatTimestamp(para.startTime)})</a>
+                                    <span class="paragraph-preview">${para.preview}</span>
+                                    <span class="paragraph-count">(${para.lines.length} lines)</span>
+                                </div>
+                                <div class="paragraph-content" style="display: none;">
+                                    ${para.lines.map(entry => `
+                                        <div class="transcript-line">
+                                            <a href="${url}&t=${Math.floor(entry.start)}" target="_blank" class="clickable-timestamp">(${formatTimestamp(entry.start)})</a>
+                                            <span class="transcript-text">${entry.text}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <!-- Raw Single Lines View -->
+                    <div class="single-line-view" id="singleLineView" style="display: none;">
+                        ${transcript.map(entry => {
+                            const timeInSeconds = Math.floor(entry.start);
+                            const youtubeLink = `${url}&t=${timeInSeconds}`;
+                            const timestampDisplay = settings.obsidianUrls ? 
+                                `[${formatTimestamp(entry.start)}](${youtubeLink})` : 
+                                `<a href="${youtubeLink}" target="_blank" class="clickable-timestamp">(${formatTimestamp(entry.start)})</a>`;
+                            return `<div class="transcript-line">${timestampDisplay} ${entry.text}</div>`;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+            document.getElementById('transcriptContainer').innerHTML = transcriptHtml;
+
+            showElement('results');
+            updateExportStats();
+        }
+
+        function switchTranscriptView(viewType) {
+            const stitchedView = document.getElementById('stitchedView');
+            const paragraphView = document.getElementById('paragraphView');
+            const singleLineView = document.getElementById('singleLineView');
+            const toggleAllBtn = document.getElementById('toggleAllBtn');
+            const stitchedBtn = document.getElementById('stitchedBtn');
+            const rawBtn = document.getElementById('rawBtn');
+            
+            // Hide all views
+            stitchedView.style.display = 'none';
+            paragraphView.style.display = 'none';
+            singleLineView.style.display = 'none';
+            
+            // Reset button styles
+            stitchedBtn.className = 'btn btn-secondary';
+            rawBtn.className = 'btn btn-secondary';
+            
+            if (viewType === 'stitched') {
+                stitchedView.style.display = 'block';
+                stitchedBtn.className = 'btn btn-primary';
+                toggleAllBtn.style.display = 'none';
+            } else if (viewType === 'paragraph') {
+                paragraphView.style.display = 'block';
+                toggleAllBtn.style.display = 'inline-block';
+            } else if (viewType === 'raw') {
+                singleLineView.style.display = 'block';
+                rawBtn.className = 'btn btn-primary';
+                toggleAllBtn.style.display = 'none';
+            }
+        }
+
+        function toggleParagraph(index) {
+            const paragraph = document.querySelector(`[data-paragraph="${index}"]`);
+            const content = paragraph.querySelector('.paragraph-content');
+            const toggle = paragraph.querySelector('.paragraph-toggle');
+            
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                toggle.textContent = '🔽';
+            } else {
+                content.style.display = 'none';
+                toggle.textContent = '▶️';
+            }
+        }
+
+        function toggleAllParagraphs() {
+            const paragraphs = document.querySelectorAll('.transcript-paragraph');
+            const btn = document.getElementById('toggleAllBtn');
+            const firstContent = document.querySelector('.paragraph-content');
+            const isExpanded = firstContent && firstContent.style.display === 'block';
+            
+            paragraphs.forEach((para, index) => {
+                const content = para.querySelector('.paragraph-content');
+                const toggle = para.querySelector('.paragraph-toggle');
+                
+                if (isExpanded) {
+                    content.style.display = 'none';
+                    toggle.textContent = '▶️';
+                } else {
+                    content.style.display = 'block';
+                    toggle.textContent = '🔽';
+                }
+            });
+            
+            btn.textContent = isExpanded ? '📖 Expand All' : '📚 Collapse All';
+        }
+
+        function groupTranscriptIntoParagraphs(transcript) {
+            if (!settings.stitchedMode) {
+                // Return individual lines if stitching is disabled
+                return transcript.map((entry, index) => ({
+                    startTime: entry.start,
+                    lines: [entry],
+                    preview: entry.text.substring(0, 50) + '...',
+                    stitchedText: entry.text
+                }));
+            }
+
+            const paragraphs = [];
+            let currentParagraph = [];
+            let paragraphStartTime = 0;
+
+            for (let i = 0; i < transcript.length; i++) {
+                const entry = transcript[i];
+                
+                // Start new paragraph if:
+                // 1. Current paragraph is empty (first entry)
+                // 2. We have 2-3 lines already 
+                // 3. Time gap of more than 10 seconds from paragraph start
+                if (currentParagraph.length === 0) {
+                    paragraphStartTime = entry.start;
+                    currentParagraph.push(entry);
+                } else if (
+                    currentParagraph.length >= 3 || 
+                    (entry.start - paragraphStartTime) > 10
+                ) {
+                    // Create stitched text for this paragraph
+                    const stitchedText = createStitchedParagraph(currentParagraph);
+                    
+                    // Finish current paragraph
+                    paragraphs.push({
+                        startTime: paragraphStartTime,
+                        lines: [...currentParagraph],
+                        preview: currentParagraph[0].text.substring(0, 50) + '...',
+                        stitchedText: stitchedText
+                    });
+                    
+                    // Start new paragraph
+                    currentParagraph = [entry];
+                    paragraphStartTime = entry.start;
+                } else {
+                    currentParagraph.push(entry);
+                }
+            }
+
+            // Add the last paragraph if it has content
+            if (currentParagraph.length > 0) {
+                const stitchedText = createStitchedParagraph(currentParagraph);
+                paragraphs.push({
+                    startTime: paragraphStartTime,
+                    lines: [...currentParagraph],
+                    preview: currentParagraph[0].text.substring(0, 50) + '...',
+                    stitchedText: stitchedText
+                });
+            }
+
+            return paragraphs;
+        }
+
+        function createStitchedParagraph(lines) {
+            if (!lines || lines.length === 0) return '';
+            
+            // Get start timestamp for the paragraph
+            const startTime = formatTimestamp(lines[0].start);
+            const url = currentVideoData ? currentVideoData.url : '';
+            
+            // Create timestamp link if URL is available
+            let timestampLink = startTime;
+            if (url && settings.obsidianUrls) {
+                const timeInSeconds = Math.floor(lines[0].start);
+                const youtubeLink = `${url}&t=${timeInSeconds}`;
+                timestampLink = `[${startTime}](${youtubeLink})`;
+            }
+            
+            // Combine all text from the lines
+            const combinedText = lines.map(line => line.text).join(' ');
+            
+            return `${timestampLink} ${combinedText}`;
+        }
+
+        // Enhanced bulk processing with playlist support
+        async function processBulkVideos() {
+            const urlsText = document.getElementById('bulkUrls').value.trim();
+            if (!urlsText) {
+                showAlert('Please enter URLs to process', 'error', 'bulkError');
+                return;
+            }
+
+            const maxVideos = parseInt(document.getElementById('maxVideos').value) || 25;
+            const urls = urlsText.split('\n').map(url => url.trim()).filter(url => url);
+
+            // Check if any URLs are playlists
+            const playlistUrls = urls.filter(url => isPlaylistUrl(url));
+            const videoUrls = urls.filter(url => !isPlaylistUrl(url)).slice(0, maxVideos);
+
+            // Reset UI
+            ['bulkError', 'bulkSuccess'].forEach(hideElement);
+            document.getElementById('bulkResults').innerHTML = '';
+            showElement('bulkProgress');
+            showElement('bulkStats');
+            showElement('bulkActions');
+            showElement('bulkFilters');
+
+            let processed = 0, successful = 0, failed = 0, duplicates = 0, totalWords = 0;
+            let allVideosToProcess = [...videoUrls];
+
+            // Process individual video URLs
+            for (const url of videoUrls) {
+                const videoId = extractVideoId(url);
+                
+                // Check for duplicates
+                if (isDuplicate(videoId)) {
+                    duplicates++;
+                    addBulkResult({ videoId, url, error: 'Duplicate video (already processed)' }, 'duplicate');
+                    processed++;
+                    updateProgress();
+                    continue;
+                }
+
+                try {
+                    const data = await extractTranscriptFromBackend(url);
+                    
+                    const videoData = {
+                        videoId: data.videoId,
+                        metadata: data.metadata,
+                        transcript: data.transcript,
+                        url: data.metadata.url,
+                        transcriptLanguage: data.transcriptLanguage,
+                        extractedAt: data.extractedAt
+                    };
+
+                    allExtractedData.push(videoData);
+                    successful++;
+                    
+                    totalWords += data.transcript.reduce((count, entry) => 
+                        count + (entry.text.split(' ').length || 0), 0);
+
+                    addBulkResult(videoData, 'success');
+                } catch (error) {
+                    failed++;
+                    addBulkResult({ videoId, url, error: error.message }, 'error');
+                }
+
+                processed++;
+                updateProgress();
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Rate limiting
+            }
+
+            function updateProgress() {
+                const totalToProcess = allVideosToProcess.length;
+                const percent = Math.min((processed / Math.max(totalToProcess, 1)) * 100, 100);
+                
+                document.getElementById('progressFill').style.width = percent + '%';
+                document.getElementById('progressText').textContent = `Processing ${processed} of ${totalToProcess} videos...`;
+                
+                document.getElementById('totalProcessed').textContent = processed;
+                document.getElementById('successCount').textContent = successful;
+                document.getElementById('errorCount').textContent = failed;
+                document.getElementById('totalWords').textContent = formatNumber(totalWords);
+            }
+
+            hideElement('bulkProgress');
+            showAlert(`Bulk processing completed! ${successful} successful, ${failed} failed, ${duplicates} duplicates.`, 'success', 'bulkSuccess');
+            updateExportStats();
+        }
+
+        function addBulkResult(data, status) {
+            const resultsContainer = document.getElementById('bulkResults');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `bulk-result ${status}`;
+            resultDiv.setAttribute('data-status', status);
+            resultDiv.setAttribute('data-video-id', data.videoId || 'unknown');
+
+            if (status === 'success') {
+                resultDiv.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <img src="${data.metadata.thumbnail}" alt="Thumbnail" style="width: 120px; height: 68px; object-fit: cover; border-radius: 4px;">
+                        <div style="flex: 1;">
+                            <strong>✓ ${data.metadata.title}</strong><br>
+                            <small>Channel: ${data.metadata.channel} | Lines: ${data.transcript.length} | Language: ${data.transcriptLanguage || 'Unknown'}</small>
+                        </div>
+                        <div class="video-actions">
+                            <button class="btn btn-sm btn-primary" onclick="copyBulkItem('${data.videoId}')">📋 Copy</button>
+                            <button class="btn btn-sm btn-secondary" onclick="downloadBulkItem('${data.videoId}', 'md')">📄 MD</button>
+                            <button class="btn btn-sm btn-secondary" onclick="downloadBulkItem('${data.videoId}', 'txt')">📝 TXT</button>
+                        </div>
+                    </div>
+                `;
+            } else if (status === 'duplicate') {
+                resultDiv.innerHTML = `
+                    <strong>🔄 ${data.url || `Video ID: ${data.videoId}`}</strong><br>
+                    <small>Duplicate: ${data.error}</small>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <strong>✗ ${data.url || `Video ID: ${data.videoId}`}</strong><br>
+                    <small>Error: ${data.error}</small>
+                `;
+            }
+            resultsContainer.appendChild(resultDiv);
+        }
+
+        // Bulk result actions
+        function copyBulkItem(videoId) {
+            const videoData = allExtractedData.find(data => data.videoId === videoId);
+            if (videoData) {
+                const markdown = generateMarkdown(videoData);
+                navigator.clipboard.writeText(markdown).then(() => {
+                    showAlert('Copied to clipboard!', 'success');
+                });
+            }
+        }
+
+        function downloadBulkItem(videoId, format) {
+            const videoData = allExtractedData.find(data => data.videoId === videoId);
+            if (videoData) {
+                if (format === 'md') {
+                    downloadFile(generateMarkdown(videoData), `${videoId}_transcript.md`, 'text/markdown');
+                } else {
+                    const text = videoData.transcript.map(entry => 
+                        settings.includeTimestamps ? 
+                        `(${formatTimestamp(entry.start)}) ${entry.text}` : 
+                        entry.text).join('\n');
+                    downloadFile(text, `${videoId}_transcript.txt`, 'text/plain');
+                }
+            }
+        }
+
+        function copyAllBulkResults() {
+            if (!allExtractedData.length) {
+                showAlert('No data to copy!', 'error');
+                return;
+            }
+            
+            let combined = `# Bulk Transcripts (${allExtractedData.length} videos)\n\n`;
+            allExtractedData.forEach((videoData, index) => {
+                combined += generateMarkdown(videoData);
+                combined += '\n\n========================================\n\n';
+            });
+            
+            navigator.clipboard.writeText(combined).then(() => {
+                showAlert('All transcripts copied to clipboard!', 'success');
+            });
+        }
+
+        function downloadAllBulkAsZip() {
+            exportAllAsZip();
+        }
+
+        function exportBulkAsCSV() {
+            exportAllAsCSV();
+        }
+
+        function exportBulkAsJSON() {
+            exportAllAsJSON();
+        }
+
+        // Filter functions
+        function filterBulkResults(filterType) {
+            const results = document.querySelectorAll('.bulk-result');
+            
+            // Reset button styles
+            document.querySelectorAll('[id^="filter"]').forEach(btn => btn.className = 'btn btn-sm btn-secondary');
+            document.getElementById('filter' + filterType.charAt(0).toUpperCase() + filterType.slice(1)).className = 'btn btn-sm btn-primary';
+            
+            results.forEach(result => {
+                const status = result.getAttribute('data-status');
+                if (filterType === 'all' || 
+                    (filterType === 'success' && status === 'success') ||
+                    (filterType === 'failed' && status === 'error') ||
+                    (filterType === 'duplicates' && status === 'duplicate')) {
+                    result.style.display = 'block';
+                } else {
+                    result.style.display = 'none';
+                }
+            });
+        }
+
+        // Export functions with enhanced metadata
+        function generateMarkdown(videoData = currentVideoData) {
+            if (!videoData) return '';
+            const { metadata, transcript, url } = videoData;
+            
+            let markdown = `[(${metadata.title}) - YouTube](${url})\n\n`;
+            markdown += `Channel: ${metadata.channel}\n`;
+            
+            // Add statistics if available
+            if (metadata.views !== 'Unknown' && metadata.views !== 'Error') {
+                markdown += `Views: ${formatNumber(metadata.views)}`;
+                if (metadata.likes !== 'Unknown' && metadata.likes !== 'Error') {
+                    markdown += ` | Likes: ${formatNumber(metadata.likes)}`;
+                }
+                if (metadata.comments !== 'Unknown' && metadata.comments !== 'Error') {
+                    markdown += ` | Comments: ${formatNumber(metadata.comments)}`;
+                }
+                markdown += '\n';
+            }
+            
+            // Add duration and publish date
+            if (metadata.duration !== 'Unknown' && typeof metadata.duration === 'number') {
+                markdown += `Duration: ${formatTimestamp(metadata.duration)}`;
+                if (metadata.publishDate !== 'Unknown') {
+                    const publishDate = new Date(metadata.publishDate).toLocaleDateString();
+                    markdown += ` | Published: ${publishDate}`;
+                }
+                markdown += '\n';
+            }
+            
+            // Add description if available
+            if (metadata.description && metadata.description !== 'Description not available' && metadata.description !== 'Metadata not available') {
+                markdown += `\nDescription:\n${metadata.description.substring(0, 500)}${metadata.description.length > 500 ? '...' : ''}\n`;
+            }
+
+            markdown += '\nTranscript:\n';
+            transcript.forEach(entry => {
+                const timeInSeconds = Math.floor(entry.start);
+                const youtubeLink = `${url}&t=${timeInSeconds}`;
+                markdown += `[${formatTimestamp(entry.start)}](${youtubeLink}) ${entry.text}\n`;
+            });
+
+            return markdown;
+        }
+
+        async function copyToClipboard() {
+            if (!currentVideoData) {
+                showAlert('No video data to copy!', 'error');
+                return;
+            }
+
+            let markdown;
+            const activeView = getActiveTranscriptView();
+            
+            if (activeView === 'stitched') {
+                markdown = generateStitchedMarkdown(currentVideoData);
+            } else if (activeView === 'raw') {
+                markdown = generateRawMarkdown(currentVideoData);
+            } else {
+                markdown = generateMarkdown(currentVideoData);
+            }
+
+            try {
+                await navigator.clipboard.writeText(markdown);
+                showAlert(`Copied ${activeView} transcript to clipboard!`);
+            } catch (error) {
+                const textarea = document.createElement('textarea');
+                textarea.value = markdown;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showAlert(`Copied ${activeView} transcript to clipboard!`);
+            }
+        }
+
+        function getActiveTranscriptView() {
+            const stitchedView = document.getElementById('stitchedView');
+            const rawView = document.getElementById('singleLineView');
+            
+            if (stitchedView && stitchedView.style.display !== 'none') {
+                return 'stitched';
+            } else if (rawView && rawView.style.display !== 'none') {
+                return 'raw';
+            } else {
+                return 'paragraph';
+            }
+        }
+
+        function generateStitchedMarkdown(videoData) {
+            const { metadata, transcript, url } = videoData;
+            let markdown = `# ${metadata.title}\n\n`;
+            markdown += `**Channel:** ${metadata.channel}\n`;
+            markdown += `**URL:** ${url}\n\n`;
+            
+            if (metadata.views !== 'Unknown' && metadata.views !== 'Error') {
+                markdown += `**Views:** ${formatNumber(metadata.views)} | **Likes:** ${formatNumber(metadata.likes)} | **Comments:** ${formatNumber(metadata.comments)}\n`;
+            }
+            
+            markdown += '\n## Transcript\n\n';
+            
+            const paragraphs = groupTranscriptIntoParagraphs(transcript);
+            paragraphs.forEach(para => {
+                if (settings.includeTimestamps) {
+                    markdown += `${para.stitchedText}\n\n`;
+                } else {
+                    // Remove timestamp from stitched text
+                    const textWithoutTimestamp = para.stitchedText.replace(/^\[[^\]]+\]\([^)]+\)\s*/, '').replace(/^\d{2}:\d{2}\s*/, '');
+                    markdown += `${textWithoutTimestamp}\n\n`;
+                }
+            });
+            
+            return markdown;
+        }
+
+        function generateRawMarkdown(videoData) {
+            const { metadata, transcript, url } = videoData;
+            let markdown = `# ${metadata.title}\n\n`;
+            markdown += `**Channel:** ${metadata.channel}\n`;
+            markdown += `**URL:** ${url}\n\n`;
+            
+            if (metadata.views !== 'Unknown' && metadata.views !== 'Error') {
+                markdown += `**Views:** ${formatNumber(metadata.views)} | **Likes:** ${formatNumber(metadata.likes)} | **Comments:** ${formatNumber(metadata.comments)}\n`;
+            }
+            
+            markdown += '\n## Transcript\n\n';
+            
+            transcript.forEach(entry => {
+                if (settings.includeTimestamps) {
+                    const timeInSeconds = Math.floor(entry.start);
+                    if (settings.obsidianUrls) {
+                        const youtubeLink = `${url}&t=${timeInSeconds}`;
+                        markdown += `[${formatTimestamp(entry.start)}](${youtubeLink}) ${entry.text}\n`;
+                    } else {
+                        markdown += `${formatTimestamp(entry.start)} ${entry.text}\n`;
+                    }
+                } else {
+                    markdown += `${entry.text}\n`;
+                }
+            });
+            
+            return markdown;
+        }
+
+        function downloadMarkdown() {
+            if (!currentVideoData) {
+                showAlert('No video data to download!', 'error');
+                return;
+            }
+
+            const activeView = getActiveTranscriptView();
+            let markdown;
+            let filename;
+            
+            if (activeView === 'stitched') {
+                markdown = generateStitchedMarkdown(currentVideoData);
+                filename = `${currentVideoData.videoId}_stitched_transcript.md`;
+            } else if (activeView === 'raw') {
+                markdown = generateRawMarkdown(currentVideoData);
+                filename = `${currentVideoData.videoId}_raw_transcript.md`;
+            } else {
+                markdown = generateMarkdown(currentVideoData);
+                filename = `${currentVideoData.videoId}_transcript.md`;
+            }
+            
+            downloadFile(markdown, filename, 'text/markdown');
+            showAlert(`Downloaded ${activeView} transcript!`);
+        }
+
+        function downloadTranscript() {
+            if (!currentVideoData) {
+                showAlert('No video data to download!', 'error');
+                return;
+            }
+
+            let text;
+            if (settings.includeTimestamps) {
+                text = currentVideoData.transcript.map(entry => 
+                    `(${formatTimestamp(entry.start)}) ${entry.text}`).join('\n');
+            } else {
+                text = currentVideoData.transcript.map(entry => entry.text).join('\n');
+            }
+            
+            downloadFile(text, `${currentVideoData.videoId}_transcript.txt`, 'text/plain');
+        }
+
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function exportAllAsCSV() {
+            if (!allExtractedData.length) {
+                showAlert('No data to export', 'error');
+                return;
+            }
+
+            const header = 'Video ID,Title,Channel,URL,Views,Likes,Comments,Duration,Thumbnail,Transcript\n';
+            const csvData = allExtractedData.map(data => {
+                const transcript = data.transcript.map(entry => 
+                    `(${formatTimestamp(entry.start)}) ${entry.text}`).join(' ');
+                
+                return [
+                    data.videoId,
+                    `"${data.metadata.title.replace(/"/g, '""')}"`,
+                    `"${data.metadata.channel.replace(/"/g, '""')}"`,
+                    data.url,
+                    data.metadata.views || 'Unknown',
+                    data.metadata.likes || 'Unknown',
+                    data.metadata.comments || 'Unknown',
+                    data.metadata.duration || 'Unknown',
+                    data.metadata.thumbnail || '',
+                    `"${transcript.replace(/"/g, '""')}"`
+                ].join(',');
+            }).join('\n');
+
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+            downloadFile(header + csvData, `youtube_transcripts_${timestamp}.csv`, 'text/csv');
+        }
+
+        function exportAllAsJSON() {
+            if (!allExtractedData.length) {
+                showAlert('No data to export', 'error');
+                return;
+            }
+
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+            downloadFile(JSON.stringify(allExtractedData, null, 2), 
+                        `youtube_transcripts_${timestamp}.json`, 'application/json');
+        }
+
+        async function exportAllAsZip() {
+            if (!allExtractedData.length) {
+                showAlert('No data to export', 'error');
+                return;
+            }
+
+            const zip = new JSZip();
+            
+            // Add individual markdown files
+            allExtractedData.forEach((data, index) => {
+                const markdown = generateMarkdown(data);
+                zip.file(`transcript_${index + 1}_${data.videoId}.md`, markdown);
+            });
+
+            // Add CSV file
+            const csvHeader = 'Video ID,Title,Channel,URL,Views,Likes,Comments,Duration,Thumbnail,Transcript\n';
+            const csvData = allExtractedData.map(data => {
+                const transcript = data.transcript.map(entry => 
+                    `(${formatTimestamp(entry.start)}) ${entry.text}`).join(' ');
+                
+                return [
+                    data.videoId,
+                    `"${data.metadata.title.replace(/"/g, '""')}"`,
+                    `"${data.metadata.channel.replace(/"/g, '""')}"`,
+                    data.url,
+                    data.metadata.views || 'Unknown',
+                    data.metadata.likes || 'Unknown', 
+                    data.metadata.comments || 'Unknown',
+                    data.metadata.duration || 'Unknown',
+                    data.metadata.thumbnail || '',
+                    `"${transcript.replace(/"/g, '""')}"`
+                ].join(',');
+            }).join('\n');
+            
+            zip.file('all_transcripts.csv', csvHeader + csvData);
+
+            // Generate and download ZIP
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+            
+            const url = URL.createObjectURL(zipBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `youtube_transcripts_${timestamp}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showAlert('ZIP file downloaded successfully!');
+        }
+
+        function updateExportStats() {
+            document.getElementById('sessionVideos').textContent = allExtractedData.length;
+            const totalSize = JSON.stringify(allExtractedData).length;
+            document.getElementById('sessionSize').textContent = formatNumber(totalSize) + ' bytes';
+            
+            if (allExtractedData.length > 0) {
+                showElement('exportStats');
+            }
+        }
+
+        function clearAllData() {
+            allExtractedData = [];
+            currentVideoData = null;
+            ['results', 'exportStats', 'bulkStats'].forEach(hideElement);
+            document.getElementById('bulkResults').innerHTML = '';
+            showAlert('All data cleared!');
+        }
+
+        // Event listeners
+        document.getElementById('videoUrl').addEventListener('keypress', e => {
+            if (e.key === 'Enter') extractSingleVideo();
+        });
+
+        console.log('YouTube Transcript Extractor Pro - Ready! 🚀');
+
+        // Playlist copy and download functions
+        function copyPlaylistResults() {
+            if (!allExtractedData || allExtractedData.length === 0) {
+                showAlert('No playlist data to copy!', 'error', 'playlistError');
+                return;
+            }
+            
+            let combined = `# Playlist Transcripts (${allExtractedData.length} videos)\n\n`;
+            allExtractedData.forEach((videoData, index) => {
+                combined += generateMarkdown(videoData);
+                combined += '\n\n========================================\n\n';
+            });
+            
+            navigator.clipboard.writeText(combined).then(() => {
+                showAlert('All transcripts copied to clipboard!', 'success', 'playlistSuccess');
+            }).catch(() => {
+                showAlert('Failed to copy to clipboard', 'error', 'playlistError');
+            });
+        }
+
+        function downloadPlaylistAsZip() {
+            if (!allExtractedData || allExtractedData.length === 0) {
+                showAlert('No playlist data to download!', 'error', 'playlistError');
+                return;
+            }
+            
+            const zip = new JSZip();
+            
+            allExtractedData.forEach((videoData, index) => {
+                const markdown = generateMarkdown(videoData);
+                const filename = `${index + 1}_${sanitizeFilename(videoData.metadata.title)}.md`;
+                zip.file(filename, markdown);
+            });
+            
+            zip.generateAsync({ type: 'blob' }).then(function(content) {
+                const url = URL.createObjectURL(content);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `playlist_transcripts_${new Date().toISOString().split('T')[0]}.zip`;
+                a.click();
+                URL.revokeObjectURL(url);
+                showAlert('ZIP file downloaded!', 'success', 'playlistSuccess');
+            });
+        }
+
+        function downloadPlaylistAsCSV() {
+            if (!allExtractedData || allExtractedData.length === 0) {
+                showAlert('No playlist data to download!', 'error', 'playlistError');
+                return;
+            }
+            
+            let csv = 'Video Title,Channel,Duration,Views,Likes,Published,URL,Transcript\n';
+            
+            allExtractedData.forEach(videoData => {
+                const transcript = videoData.transcript.map(entry => 
+                    `${formatTimestamp(entry.start)} ${entry.text}`
+                ).join(' | ');
+                
+                csv += `"${videoData.metadata.title}","${videoData.metadata.channel}","${videoData.metadata.duration}","${videoData.metadata.views}","${videoData.metadata.likes}","${videoData.metadata.publishDate}","${videoData.url}","${transcript}"\n`;
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `playlist_transcripts_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showAlert('CSV file downloaded!', 'success', 'playlistSuccess');
+        }
+
+        function downloadPlaylistAsJSON() {
+            if (!allExtractedData || allExtractedData.length === 0) {
+                showAlert('No playlist data to download!', 'error', 'playlistError');
+                return;
+            }
+            
+            const jsonData = {
+                exportedAt: new Date().toISOString(),
+                totalVideos: allExtractedData.length,
+                videos: allExtractedData
+            };
+            
+            const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `playlist_transcripts_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showAlert('JSON file downloaded!', 'success', 'playlistSuccess');
+        }
+
+        // Download History functions
+        function refreshHistory() {
+            const historyList = document.getElementById('historyList');
+            const historyStats = {
+                videos: allExtractedData.length,
+                transcripts: allExtractedData.length,
+                words: 0,
+                size: 0
+            };
+            
+            // Calculate stats
+            allExtractedData.forEach(videoData => {
+                historyStats.words += videoData.transcript.reduce((count, entry) => 
+                    count + (entry.text.split(' ').length || 0), 0);
+                historyStats.size += JSON.stringify(videoData).length;
+            });
+            
+            // Update stats display
+            document.getElementById('historyVideos').textContent = historyStats.videos;
+            document.getElementById('historyTranscripts').textContent = historyStats.transcripts;
+            document.getElementById('historyWords').textContent = formatNumber(historyStats.words);
+            document.getElementById('historySize').textContent = (historyStats.size / 1024).toFixed(1) + ' KB';
+            
+            // Generate history list
+            if (allExtractedData.length === 0) {
+                historyList.innerHTML = '<p style="text-align: center; color: #5f6368; margin-top: 40px;">No transcripts extracted yet. Extract some videos to see them here!</p>';
+                return;
+            }
+            
+            const historyHtml = allExtractedData.map((videoData, index) => `
+                <div class="download-history-item">
+                    <h4>${videoData.metadata.title}</h4>
+                    <p><strong>Channel:</strong> ${videoData.metadata.channel}</p>
+                    <p><strong>Extracted:</strong> ${new Date(videoData.extractedAt).toLocaleString()}</p>
+                    <p><strong>Lines:</strong> ${videoData.transcript.length} | <strong>Language:</strong> ${videoData.transcriptLanguage || 'Unknown'}</p>
+                    
+                    <div class="actions" style="margin-top: 12px;">
+                        <button class="btn btn-sm btn-primary" onclick="copyHistoryItem(${index})">📋 Copy</button>
+                        <button class="btn btn-sm btn-secondary" onclick="downloadHistoryItem(${index}, 'md')">📄 MD</button>
+                        <button class="btn btn-sm btn-secondary" onclick="downloadHistoryItem(${index}, 'txt')">📝 TXT</button>
+                        <button class="btn btn-sm btn-warning" onclick="removeHistoryItem(${index})">🗑️ Remove</button>
+                    </div>
+                </div>
+            `).join('');
+            
+            historyList.innerHTML = historyHtml;
+        }
+
+        function copyHistoryItem(index) {
+            if (index >= 0 && index < allExtractedData.length) {
+                const markdown = generateMarkdown(allExtractedData[index]);
+                navigator.clipboard.writeText(markdown).then(() => {
+                    showAlert('Transcript copied to clipboard!', 'success');
+                }).catch(() => {
+                    showAlert('Failed to copy to clipboard', 'error');
+                });
+            }
+        }
+
+        function downloadHistoryItem(index, format) {
+            if (index >= 0 && index < allExtractedData.length) {
+                const videoData = allExtractedData[index];
+                const filename = sanitizeFilename(videoData.metadata.title);
+                
+                if (format === 'md') {
+                    const markdown = generateMarkdown(videoData);
+                    const blob = new Blob([markdown], { type: 'text/markdown' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${filename}.md`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                } else if (format === 'txt') {
+                    const transcript = videoData.transcript.map(entry => 
+                        `${formatTimestamp(entry.start)} ${entry.text}`
+                    ).join('\n');
+                    const blob = new Blob([transcript], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${filename}.txt`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                }
+                showAlert(`${format.toUpperCase()} file downloaded!`, 'success');
+            }
+        }
+
+        function removeHistoryItem(index) {
+            if (index >= 0 && index < allExtractedData.length && 
+                confirm('Are you sure you want to remove this transcript from history?')) {
+                allExtractedData.splice(index, 1);
+                refreshHistory();
+                showAlert('Transcript removed from history', 'success');
+            }
+        }
+
+        function downloadAllHistory() {
+            if (allExtractedData.length === 0) {
+                showAlert('No history to download!', 'error');
+                return;
+            }
+            downloadPlaylistAsZip(); // Reuse the same function
+        }
+
+        function exportHistoryAsCSV() {
+            if (allExtractedData.length === 0) {
+                showAlert('No history to export!', 'error');
+                return;
+            }
+            downloadPlaylistAsCSV(); // Reuse the same function
+        }
+
+        function clearHistory() {
+            if (allExtractedData.length === 0) {
+                showAlert('History is already empty!', 'warning');
+                return;
+            }
+            
+            if (confirm('This will clear all extracted transcripts from your session. Are you sure?')) {
+                allExtractedData = [];
+                currentVideoData = null;
+                refreshHistory();
+                showAlert('History cleared!', 'success');
+            }
+        }
+
+        // Update the markdown generation to respect settings
+        function generateMarkdown(videoData) {
+            const metadata = videoData.metadata;
+            const transcript = videoData.transcript;
+            const url = videoData.url;
+            
+            let markdown = '';
+            
+            // Title with URL
+            if (settings.obsidianUrls) {
+                markdown += `# [${metadata.title}](${url})\n\n`;
+            } else {
+                markdown += `# ${metadata.title}\n\n`;
+                markdown += `**URL:** ${url}\n\n`;
+            }
+            
+            // Metadata
+            markdown += `**Channel:** ${metadata.channel}\n`;
+            markdown += `**Views:** ${metadata.views} | **Likes:** ${metadata.likes} | **Comments:** ${metadata.comments}\n`;
+            markdown += `**Duration:** ${metadata.duration} | **Published:** ${metadata.publishDate}\n\n`;
+            
+            if (metadata.description && metadata.description !== 'No description available') {
+                markdown += `**Description:**\n${metadata.description}\n\n`;
+            }
+            
+            // Transcript
+            markdown += '## Transcript\n\n';
+            
+            if (settings.stitchedMode) {
+                // Use stitched paragraphs
+                const paragraphs = groupTranscriptIntoParagraphs(transcript);
+                paragraphs.forEach(para => {
+                    markdown += `${para.stitchedText}\n\n`;
+                });
+            } else {
+                // Use individual lines
+                transcript.forEach(entry => {
+                    const timeInSeconds = Math.floor(entry.start);
+                    if (settings.obsidianUrls) {
+                        const youtubeLink = `${url}&t=${timeInSeconds}`;
+                        markdown += `[${formatTimestamp(entry.start)}](${youtubeLink}) ${entry.text}\n`;
+                    } else {
+                        markdown += `${formatTimestamp(entry.start)} ${entry.text}\n`;
+                    }
+                });
+            }
+            
+            return markdown;
+        }
+
+        function sanitizeFilename(filename) {
+            return filename.replace(/[^a-zA-Z0-9-_.]/g, '_');
+        }
+
+        function toggleViewModeForVideo(videoId) {
+            const paragraphView = document.getElementById(`paragraphView_${videoId}`);
+            const singleLineView = document.getElementById(`singleLineView_${videoId}`);
+            const viewModeBtn = document.getElementById(`viewMode_${videoId}`);
+            const toggleAllBtn = document.getElementById(`toggleAll_${videoId}`);
+            
+            if (!paragraphView || !singleLineView) return;
+            
+            if (paragraphView.style.display === 'none') {
+                paragraphView.style.display = 'block';
+                singleLineView.style.display = 'none';
+                viewModeBtn.textContent = '📝 Single Line View';
+                if (toggleAllBtn) toggleAllBtn.style.display = 'inline-block';
+            } else {
+                paragraphView.style.display = 'none';
+                singleLineView.style.display = 'block';
+                viewModeBtn.textContent = '📖 Paragraph View';
+                if (toggleAllBtn) toggleAllBtn.style.display = 'none';
+            }
+        }
+
+        function toggleParagraphForVideo(videoId, index) {
+            const paragraph = document.querySelector(`[data-video="${videoId}"][data-paragraph="${index}"]`);
+            if (!paragraph) return;
+            
+            const content = paragraph.querySelector('.paragraph-content');
+            const toggle = paragraph.querySelector('.paragraph-toggle');
+            
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                toggle.textContent = '🔽';
+            } else {
+                content.style.display = 'none';
+                toggle.textContent = '▶️';
+            }
+        }
+
+        function toggleAllParagraphsForVideo(videoId) {
+            const paragraphs = document.querySelectorAll(`[data-video="${videoId}"]`);
+            const btn = document.getElementById(`toggleAll_${videoId}`);
+            const firstContent = paragraphs[0]?.querySelector('.paragraph-content');
+            const isExpanded = firstContent && firstContent.style.display === 'block';
+            
+            paragraphs.forEach((para) => {
+                const content = para.querySelector('.paragraph-content');
+                const toggle = para.querySelector('.paragraph-toggle');
+                
+                if (isExpanded) {
+                    content.style.display = 'none';
+                    toggle.textContent = '▶️';
+                } else {
+                    content.style.display = 'block';
+                    toggle.textContent = '🔽';
+                }
+            });
+            
+            if (btn) {
+                btn.textContent = isExpanded ? '📖 Expand All' : '📚 Collapse All';
+            }
+        }
+
+        // Playlist processing functions
+        async function processPlaylist() {
+            const playlistUrl = document.getElementById('playlistUrl').value.trim();
+            if (!playlistUrl) {
+                showAlert('Please enter a playlist URL', 'error', 'playlistError');
+                return;
+            }
+
+            if (!isPlaylistUrl(playlistUrl)) {
+                showAlert('Please enter a valid YouTube playlist URL', 'error', 'playlistError');
+                return;
+            }
+
+            const maxVideos = parseInt(document.getElementById('playlistMaxVideos').value) || 20;
+            
+            // Reset UI
+            ['playlistError', 'playlistSuccess'].forEach(id => hideElement(id));
+            document.getElementById('playlistResults').innerHTML = '';
+            showElement('playlistProgress');
+            showElement('playlistControls');
+
+            try {
+                const response = await fetch(`${BACKEND_API_BASE}/extract-playlist`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        url: playlistUrl, 
+                        maxVideos: maxVideos,
+                        includeDescription: document.getElementById('playlistIncludeDescription').checked,
+                        includeStats: document.getElementById('playlistIncludeStats').checked
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentPlaylistResults = data.results; // Store for individual actions
+                    displayPlaylistResults(data);
+                    
+                    // Add to extracted data
+                    data.results.forEach(result => {
+                        if (result.success) {
+                            const videoData = {
+                                videoId: result.videoId,
+                                metadata: result.metadata,
+                                transcript: result.transcript,
+                                url: result.metadata.url,
+                                transcriptLanguage: result.transcriptLanguage,
+                                extractedAt: new Date().toISOString()
+                            };
+                            allExtractedData.push(videoData);
+                        }
+                    });
+                    
+                    hideElement('playlistProgress');
+                    showAlert(`Playlist processed: ${data.processedVideos} videos processed!`, 'success', 'playlistSuccess');
+                } else {
+                    const errorData = await response.json();
+                    showAlert(`Playlist error: ${errorData.error}`, 'error', 'playlistError');
+                }
+            } catch (error) {
+                hideElement('playlistProgress');
+                showAlert(`Playlist processing failed: ${error.message}`, 'error', 'playlistError');
+            }
+        }
+
+        function displayPlaylistResults(data) {
+            const resultsContainer = document.getElementById('playlistResults');
+            
+            const resultsHtml = `
+                <div class="playlist-results">
+                    <h3>🎬 Playlist Results (${data.totalVideos} videos, ${data.processedVideos} processed)</h3>
+                    ${data.results.map((result, index) => {
+                        if (result.success) {
+                            const paragraphs = groupTranscriptIntoParagraphs(result.transcript);
+                            return `
+                                <div class="video-card" style="margin-bottom: 20px;">
+                                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                                        <img src="${result.metadata.thumbnail}" alt="Thumbnail" style="width: 120px; height: 68px; object-fit: cover; border-radius: 4px;" onerror="this.src='https://img.youtube.com/vi/${result.videoId}/maxresdefault.jpg'">
+                                        <div style="flex: 1;">
+                                            <h4>${result.metadata.title}</h4>
+                                            <p><strong>Channel:</strong> ${result.metadata.channel} | <strong>Lines:</strong> ${result.transcript.length}</p>
+                                        </div>
+                                        <div class="video-actions">
+                                            <button class="btn btn-sm btn-primary" onclick="copyPlaylistItem(${index})">📋 Copy</button>
+                                            <button class="btn btn-sm btn-secondary" onclick="downloadPlaylistItem(${index}, 'md')">📄 MD</button>
+                                            <button class="btn btn-sm btn-secondary" onclick="downloadPlaylistItem(${index}, 'txt')">📝 TXT</button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="transcript-container">
+                                        <div class="url-toggle-container">
+                                            <label>View mode:</label>
+                                            <button class="btn btn-sm btn-secondary" onclick="togglePlaylistVideoView('${result.videoId}')">
+                                                📝 Toggle Stitched/Raw
+                                            </button>
+                                        </div>
+                                        
+                                        <div class="stitched-view" id="stitched_${result.videoId}">
+                                            ${paragraphs.map(para => `
+                                                <div class="stitched-paragraph">
+                                                    ${para.stitchedText}
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                        
+                                        <div class="raw-view" id="raw_${result.videoId}" style="display: none;">
+                                            ${result.transcript.map(entry => {
+                                                const timeInSeconds = Math.floor(entry.start);
+                                                const youtubeLink = `${result.metadata.url}&t=${timeInSeconds}`;
+                                                const timestampDisplay = settings.includeTimestamps ? 
+                                                    (settings.obsidianUrls ? 
+                                                        `[${formatTimestamp(entry.start)}](${youtubeLink})` : 
+                                                        formatTimestamp(entry.start)) : '';
+                                                return `<div class="transcript-line">${timestampDisplay} ${entry.text}</div>`;
+                                            }).join('')}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            return `
+                                <div class="video-card error" style="margin-bottom: 20px;">
+                                    <h4>❌ Failed to process video</h4>
+                                    <p>Error: ${result.error}</p>
+                                </div>
+                            `;
+                        }
+                    }).join('')}
+                </div>
+            `;
+            
+            resultsContainer.innerHTML = resultsHtml;
+        }
+
+        function togglePlaylistVideoView(videoId) {
+            const stitchedView = document.getElementById(`stitched_${videoId}`);
+            const rawView = document.getElementById(`raw_${videoId}`);
+            
+            if (stitchedView.style.display === 'none') {
+                stitchedView.style.display = 'block';
+                rawView.style.display = 'none';
+            } else {
+                stitchedView.style.display = 'none';
+                rawView.style.display = 'block';
+            }
+        }
+
+        // Store playlist results for individual actions
+        let currentPlaylistResults = [];
+
+        function copyPlaylistItem(index) {
+            if (index >= 0 && index < currentPlaylistResults.length) {
+                const result = currentPlaylistResults[index];
+                if (result.success) {
+                    const videoData = {
+                        videoId: result.videoId,
+                        metadata: result.metadata,
+                        transcript: result.transcript,
+                        url: result.metadata.url
+                    };
+                    const markdown = generateMarkdown(videoData);
+                    navigator.clipboard.writeText(markdown).then(() => {
+                        showAlert('Copied to clipboard!', 'success');
+                    });
+                }
+            }
+        }
+
+        function downloadPlaylistItem(index, format) {
+            if (index >= 0 && index < currentPlaylistResults.length) {
+                const result = currentPlaylistResults[index];
+                if (result.success) {
+                    const videoData = {
+                        videoId: result.videoId,
+                        metadata: result.metadata,
+                        transcript: result.transcript,
+                        url: result.metadata.url
+                    };
+                    
+                    if (format === 'md') {
+                        const markdown = generateMarkdown(videoData);
+                        downloadFile(markdown, `${result.videoId}_transcript.md`, 'text/markdown');
+                    } else {
+                        const text = result.transcript.map(entry => 
+                            settings.includeTimestamps ? 
+                            `(${formatTimestamp(entry.start)}) ${entry.text}` : 
+                            entry.text).join('\n');
+                        downloadFile(text, `${result.videoId}_transcript.txt`, 'text/plain');
+                    }
+                    showAlert(`Downloaded ${format.toUpperCase()} file!`, 'success');
+                }
+            }
+        }
+
+        // Duplicate detection
+        function isDuplicate(videoId) {
+            if (!settings.detectDuplicates) return false;
+            return allExtractedData.some(data => data.videoId === videoId);
+        }
+
+        function updateTimestampMode() {
+            settings.includeTimestamps = document.getElementById('includeTimestamps').checked;
+            saveSettings();
+            showAlert('Timestamp display mode updated!', 'success');
+        }
+
+        function updateDuplicateDetection() {
+            settings.detectDuplicates = document.getElementById('detectDuplicates').checked;
+            saveSettings();
+            showAlert('Duplicate detection updated!', 'success');
+        }
+
+        // Bulk URL processing
+        async function processBulkUrls() {
+            const urlsText = document.getElementById('bulkUrlsInput').value.trim();
+            if (!urlsText) {
+                showAlert('Please enter URLs to process', 'error', 'bulkUrlError');
+                return;
+            }
+
+            const maxUrls = parseInt(document.getElementById('maxUrls').value) || 25;
+            const urls = urlsText.split('\n').map(url => url.trim()).filter(url => url && isValidUrl(url)).slice(0, maxUrls);
+
+            if (urls.length === 0) {
+                showAlert('No valid URLs found to process', 'error', 'bulkUrlError');
+                return;
+            }
+
+            // Reset UI
+            ['bulkUrlError', 'bulkUrlSuccess'].forEach(hideElement);
+            document.getElementById('bulkUrlResults').innerHTML = '';
+            showElement('bulkUrlProgress');
+            showElement('bulkUrlStats');
+            showElement('bulkUrlActions');
+            showElement('urlFilters');
+
+            let processed = 0, successful = 0, failed = 0, duplicates = 0;
+
+            for (const url of urls) {
+                // Check for duplicates
+                if (isDuplicateUrl(url)) {
+                    duplicates++;
+                    addBulkUrlResult({ url, error: 'Duplicate URL (already processed)' }, 'duplicate');
+                    processed++;
+                    updateUrlProgress();
+                    continue;
+                }
+
+                try {
+                    await new Promise(resolve => setTimeout(resolve, urlSettings.requestDelay));
+                    
+                    const urlData = await fetchUrlMetadata(url);
+                    allExtractedUrls.push(urlData);
+                    successful++;
+                    addBulkUrlResult(urlData, 'success');
+                } catch (error) {
+                    failed++;
+                    const failedData = {
+                        url: url,
+                        title: urlSettings.includeDomainOnFail ? new URL(url).hostname : 'Failed to fetch title',
+                        error: error.message,
+                        domain: new URL(url).hostname,
+                        success: false,
+                        convertedAt: new Date().toISOString()
+                    };
+                    failedUrls.push(failedData);
+                    addBulkUrlResult(failedData, 'error');
+                }
+
+                processed++;
+                updateUrlProgress();
+            }
+
+            function updateUrlProgress() {
+                const percent = Math.min((processed / urls.length) * 100, 100);
+                
+                document.getElementById('urlProgressFill').style.width = percent + '%';
+                document.getElementById('urlProgressText').textContent = `Processing ${processed} of ${urls.length} URLs...`;
+                
+                document.getElementById('urlTotalProcessed').textContent = processed;
+                document.getElementById('urlSuccessCount').textContent = successful;
+                document.getElementById('urlErrorCount').textContent = failed;
+                document.getElementById('urlDuplicateCount').textContent = duplicates;
+            }
+
+            hideElement('bulkUrlProgress');
+            showAlert(`Bulk URL processing completed! ${successful} successful, ${failed} failed, ${duplicates} duplicates.`, 'success', 'bulkUrlSuccess');
+        }
+
+        function addBulkUrlResult(data, status) {
+            const resultsContainer = document.getElementById('bulkUrlResults');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `url-result ${status}`;
+            resultDiv.setAttribute('data-status', status);
+            resultDiv.setAttribute('data-url', data.url);
+
+            if (status === 'success') {
+                resultDiv.innerHTML = `
+                    <div class="url-result-header">
+                        <span class="url-result-status success">✅ Success</span>
+                        <span style="color: #64748b; font-size: 0.9rem;">${data.domain}</span>
+                        <div class="video-actions">
+                            <button class="btn btn-sm btn-primary" onclick="copyBulkUrlItem('${encodeURIComponent(data.url)}')">📋 Copy</button>
+                            <button class="btn btn-sm btn-secondary" onclick="downloadBulkUrlItem('${encodeURIComponent(data.url)}')">📄 Download</button>
+                        </div>
+                    </div>
+                    <h4>${data.title}</h4>
+                    <div class="url-meta">URL: <a href="${data.url}" target="_blank">${data.url}</a></div>
+                    <div class="markdown-output">${generateMarkdownLink(data)}</div>
+                `;
+            } else if (status === 'duplicate') {
+                resultDiv.innerHTML = `
+                    <div class="url-result-header">
+                        <span class="url-result-status warning">🔄 Duplicate</span>
+                        <span style="color: #64748b; font-size: 0.9rem;">${new URL(data.url).hostname}</span>
+                    </div>
+                    <strong>${data.url}</strong><br>
+                    <small>Duplicate: ${data.error}</small>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="url-result-header">
+                        <span class="url-result-status error">❌ Failed</span>
+                        <span style="color: #64748b; font-size: 0.9rem;">${data.domain}</span>
+                        <button class="retry-button" onclick="retryBulkUrlItem('${encodeURIComponent(data.url)}')">🔄 Retry</button>
+                    </div>
+                    <strong>${data.title}</strong><br>
+                    <div class="url-meta">URL: <a href="${data.url}" target="_blank">${data.url}</a></div>
+                    <small style="color: var(--danger);">Error: ${data.error}</small>
+                `;
+            }
+            resultsContainer.appendChild(resultDiv);
+        }
+
+        function isDuplicateUrl(url) {
+            if (!urlSettings.detectDuplicates) return false;
+            return allExtractedUrls.some(data => data.url === url);
+        }
+
+        function copyBulkUrlItem(encodedUrl) {
+            const url = decodeURIComponent(encodedUrl);
+            const urlData = allExtractedUrls.find(data => data.url === url);
+            if (urlData) {
+                const markdown = generateMarkdownLink(urlData);
+                navigator.clipboard.writeText(markdown).then(() => {
+                    showAlert('Markdown link copied to clipboard!', 'success', 'bulkUrlSuccess');
+                });
+            }
+        }
+
+        function downloadBulkUrlItem(encodedUrl) {
+            const url = decodeURIComponent(encodedUrl);
+            const urlData = allExtractedUrls.find(data => data.url === url);
+            if (urlData) {
+                const markdown = generateMarkdownLink(urlData);
+                const filename = `${sanitizeFilename(urlData.title)}.md`;
+                downloadFile(markdown, filename, 'text/markdown');
+            }
+        }
+
+        function retryBulkUrlItem(encodedUrl) {
+            const url = decodeURIComponent(encodedUrl);
+            // Switch to single URL tab and retry
+            switchUrlTab('single-url');
+            document.getElementById('singleUrl').value = url;
+            setTimeout(() => convertSingleUrl(), 500);
+        }
+
+        function copyAllUrlResults() {
+            const successfulUrls = allExtractedUrls.filter(u => u.success);
+            if (successfulUrls.length === 0) {
+                showAlert('No successful URL conversions to copy!', 'error', 'bulkUrlError');
+                return;
+            }
+            
+            const markdown = successfulUrls.map(urlData => generateMarkdownLink(urlData)).join('\n');
+            navigator.clipboard.writeText(markdown).then(() => {
+                showAlert('All markdown links copied to clipboard!', 'success', 'bulkUrlSuccess');
+            });
+        }
+
+        function downloadAllUrlsAsZip() {
+            const successfulUrls = allExtractedUrls.filter(u => u.success);
+            if (successfulUrls.length === 0) {
+                showAlert('No successful URL conversions to download!', 'error', 'bulkUrlError');
+                return;
+            }
+            
+            const zip = new JSZip();
+            
+            successfulUrls.forEach((urlData, index) => {
+                const markdown = generateMarkdownLink(urlData);
+                const filename = `${index + 1}_${sanitizeFilename(urlData.title)}.md`;
+                zip.file(filename, markdown);
+            });
+            
+            // Add a combined file
+            const combinedMarkdown = successfulUrls.map(urlData => generateMarkdownLink(urlData)).join('\n');
+            zip.file('all_links.md', combinedMarkdown);
+            
+            zip.generateAsync({ type: 'blob' }).then(function(content) {
+                const url = URL.createObjectURL(content);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `url_conversions_${new Date().toISOString().split('T')[0]}.zip`;
+                a.click();
+                URL.revokeObjectURL(url);
+                showAlert('ZIP file downloaded!', 'success', 'bulkUrlSuccess');
+            });
+        }
+
+        function exportUrlsAsCSV() {
+            if (allExtractedUrls.length === 0) {
+                showAlert('No URL data to export!', 'error', 'bulkUrlError');
+                return;
+            }
+            
+            exportUrlHistoryAsCSV();
+        }
+
+        function exportUrlsAsJSON() {
+            if (allExtractedUrls.length === 0) {
+                showAlert('No URL data to export!', 'error', 'bulkUrlError');
+                return;
+            }
+            
+            const jsonData = {
+                exportedAt: new Date().toISOString(),
+                totalUrls: allExtractedUrls.length,
+                successfulUrls: allExtractedUrls.filter(u => u.success).length,
+                urls: allExtractedUrls
+            };
+            
+            const filename = `url_conversions_${new Date().toISOString().split('T')[0]}.json`;
+            downloadFile(JSON.stringify(jsonData, null, 2), filename, 'application/json');
+        }
+
+        function filterUrlResults(filterType) {
+            const results = document.querySelectorAll('.url-result');
+            
+            // Reset button styles
+            document.querySelectorAll('[id^="urlFilter"]').forEach(btn => btn.className = 'btn btn-sm btn-secondary');
+            document.getElementById('urlFilter' + filterType.charAt(0).toUpperCase() + filterType.slice(1)).className = 'btn btn-sm btn-primary';
+            
+            results.forEach(result => {
+                const status = result.getAttribute('data-status');
+                if (filterType === 'all' || 
+                    (filterType === 'success' && status === 'success') ||
+                    (filterType === 'failed' && status === 'error') ||
+                    (filterType === 'duplicates' && status === 'duplicate')) {
+                    result.style.display = 'block';
+                } else {
+                    result.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+</html> 

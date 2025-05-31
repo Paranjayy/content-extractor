@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Transcript Extractor Pro</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        :root {
+            --primary: #1a73e8;
+            --primary-dark: #1557b0;
+            --success: #34a853;
+            --warning: #fbbc04;
+            --danger: #ea4335;
+            --dark: #202124;
+            --light: #f8f9fa;
+            --border: #dadce0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Google Sans', 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 300;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .tabs {
+            display: flex;
+            background: var(--light);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 16px 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.2s;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab:hover { background: #e8f0fe; }
+        .tab.active {
+            background: white;
+            border-bottom-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+            padding: 30px;
+        }
+
+        .tab-content.active { display: block; }
+
+        .input-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .input-field {
+            flex: 1;
+            padding: 14px 16px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.2s;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .btn {
+            padding: 14px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 16px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        .option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--light);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+            display: none;
+        }
+
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .alert-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+
+        .video-card {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 20px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+
+        .video-thumbnail {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .video-info h3 {
+            font-size: 1.3rem;
+            color: var(--dark);
+            margin-bottom: 8px;
+        }
+
+        .video-meta {
+            color: #5f6368;
+            margin: 4px 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 16px;
+            margin: 16px 0;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 16px;
+            background: var(--light);
+            border-radius: 8px;
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #5f6368;
+        }
+
+        .transcript-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            background: #fafafa;
+            margin: 20px 0;
+        }
+
+        .transcript-line {
+            margin-bottom: 12px;
+            line-height: 1.6;
+        }
+
+        .timestamp {
+            color: var(--primary);
+            font-weight: 600;
+            font-family: monospace;
+            margin-right: 12px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--light);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 16px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.3s;
+        }
+
+        .bulk-result {
+            padding: 16px;
+            border-left: 4px solid var(--success);
+            background: #f8f9fa;
+            margin: 8px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .bulk-result.error {
+            border-left-color: var(--danger);
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .tabs { flex-direction: column; }
+            .input-group { flex-direction: column; }
+            .video-card { grid-template-columns: 1fr; }
+            .actions { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <h1>🎬 YouTube Transcript Extractor Pro</h1>
+                <p>Extract transcripts with real metadata, views, likes, and bulk processing</p>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('single')">📹 Single Video</button>
+                <button class="tab" onclick="showTab('bulk')">📚 Bulk Processing</button>
+                <button class="tab" onclick="showTab('export')">💾 Export & Download</button>
+            </div>
+
+            <!-- Single Video Tab -->
+            <div class="tab-content active" id="single-tab">
+                <div class="input-group">
+                    <input type="text" class="input-field" id="videoUrl" 
+                           placeholder="Enter YouTube URL (e.g., https://www.youtube.com/watch?v=dQw4w9WgXcQ)" />
+                    <button class="btn btn-primary" onclick="extractSingleVideo()">
+                        🔍 Extract Transcript
+                    </button>
+                </div>
+
+                <div class="options-grid">
+                    <div class="option">
+                        <input type="checkbox" id="includeDescription" checked>
+                        <label>Include description</label>
+                    </div>
+                    <div class="option">
+                        <input type="checkbox" id="includeMetadata" checked>
+                        <label>Include metadata</label>
+                    </div>
+                    <div class="option">
+                        <input type="checkbox" id="includeStats" checked>
+                        <label>Include views/likes</label>
+                    </div>
+                </div>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p id="loadingText">Extracting transcript... This may take a moment.</p>
+                </div>
+
+                <div class="alert alert-danger" id="error"></div>
+                <div class="alert alert-success" id="success"></div>
+                <div class="alert alert-warning" id="warning"></div>
+
+                <div id="results" style="display: none;">
+                    <div id="videoCard"></div>
+                    <div id="transcriptContainer"></div>
+                    <div class="actions">
+                        <button class="btn btn-success" onclick="copyToClipboard()">📋 Copy as Markdown</button>
+                        <button class="btn btn-secondary" onclick="downloadMarkdown()">📄 Download MD</button>
+                        <button class="btn btn-secondary" onclick="downloadTranscript()">📝 Download TXT</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bulk Processing Tab -->
+            <div class="tab-content" id="bulk-tab">
+                <h3>🚀 Bulk Video Processing</h3>
+                <p style="margin-bottom: 20px; color: #5f6368;">
+                    Enter multiple YouTube URLs (one per line) or playlist URLs:
+                </p>
+                
+                <textarea class="textarea" id="bulkUrls" 
+                          placeholder="https://www.youtube.com/watch?v=video1&#10;https://www.youtube.com/watch?v=video2&#10;https://www.youtube.com/playlist?list=PLxxxxxxx"></textarea>
+
+                <div class="options-grid">
+                    <div class="option">
+                        <input type="number" id="maxVideos" min="1" max="100" value="25">
+                        <label>Max videos to process</label>
+                    </div>
+                    <div class="option">
+                        <input type="checkbox" id="bulkIncludeDescription">
+                        <label>Include descriptions</label>
+                    </div>
+                    <div class="option">
+                        <input type="checkbox" id="bulkIncludeStats" checked>
+                        <label>Include stats</label>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="processBulkVideos()" style="margin-top: 20px;">
+                    🚀 Process All Videos
+                </button>
+
+                <div id="bulkProgress" style="display: none;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <p id="progressText">Processing 0 of 0 videos...</p>
+                </div>
+
+                <div class="alert alert-danger" id="bulkError"></div>
+                <div class="alert alert-success" id="bulkSuccess"></div>
+
+                <div id="bulkStats" class="stats-grid" style="display: none;">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalProcessed">0</div>
+                        <div class="stat-label">Processed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="successCount">0</div>
+                        <div class="stat-label">Successful</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="errorCount">0</div>
+                        <div class="stat-label">Failed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalWords">0</div>
+                        <div class="stat-label">Total Words</div>
+                    </div>
+                </div>
+
+                <div id="bulkResults"></div>
+            </div>
+
+            <!-- Export Tab -->
+            <div class="tab-content" id="export-tab">
+                <h3>💾 Export & Download Options</h3>
+                
+                <div class="actions" style="margin: 30px 0;">
+                    <button class="btn btn-success" onclick="exportAllAsCSV()">📊 Export CSV</button>
+                    <button class="btn btn-success" onclick="exportAllAsJSON()">📄 Export JSON</button>
+                    <button class="btn btn-success" onclick="exportAllAsZip()">🗃️ Export ZIP</button>
+                    <button class="btn btn-secondary" onclick="clearAllData()">🗑️ Clear All</button>
+                </div>
+
+                <div class="card" style="padding: 20px; background: #f8f9fa;">
+                    <h4>📋 Output Format Preview</h4>
+                    <pre style="margin-top: 16px; padding: 16px; background: white; border-radius: 8px; overflow-x: auto;">[(Video Title) - YouTube](https://www.youtube.com/watch?v=VIDEO_ID)
+
+Channel: Channel Name
+Views: 1.2M | Likes: 45K | Comments: 2.3K
+Duration: 10:30 | Published: 2023-01-15
+
+Transcript:
+(00:00) First line of transcript...
+(00:15) Second line of transcript...
+(00:30) Third line of transcript...</pre>
+                </div>
+
+                <div id="exportStats" style="display: none;">
+                    <h4>📊 Current Session Data</h4>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number" id="sessionVideos">0</div>
+                            <div class="stat-label">Videos</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="sessionSize">0 KB</div>
+                            <div class="stat-label">Data Size</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentVideoData = null;
+        let allExtractedData = [];
+
+        // YouTube Data API v3 configuration
+        const YOUTUBE_API_KEY = 'AIzaSyAV_j5IsZlkXNtkadQ7HQiocTYysm9kvH0';
+        const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3';
+
+        // Tab management
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(tabName + '-tab').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Utility functions
+        function extractVideoId(url) {
+            const patterns = [
+                /(?:v=|\/)([0-9A-Za-z_-]{11}).*/,
+                /(?:embed\/)([0-9A-Za-z_-]{11})/,
+                /(?:watch\?v=|\/)([0-9A-Za-z_-]{11})/
+            ];
+            for (const pattern of patterns) {
+                const match = url.match(pattern);
+                if (match) return match[1];
+            }
+            if (url.length === 11 && /^[0-9A-Za-z_-]+$/.test(url)) return url;
+            return null;
+        }
+
+        function formatNumber(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toString();
+        }
+
+        function formatTimestamp(seconds) {
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            return h > 0 ? 
+                `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}` :
+                `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        function showElement(id) { document.getElementById(id).style.display = 'block'; }
+        function hideElement(id) { document.getElementById(id).style.display = 'none'; }
+
+        function showAlert(message, type = 'success', elementId = type === 'error' ? 'error' : 'success') {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.style.display = 'block';
+            if (type === 'success') setTimeout(() => hideElement(elementId), 5000);
+        }
+
+        // Enhanced metadata extraction with REAL YouTube Data API
+        async function getEnhancedMetadata(videoId) {
+            try {
+                // Get video details from YouTube Data API v3
+                const videoUrl = `${YOUTUBE_API_BASE}/videos?part=snippet,statistics,contentDetails&id=${videoId}&key=${YOUTUBE_API_KEY}`;
+                const response = await fetch(videoUrl);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.items && data.items.length > 0) {
+                        const video = data.items[0];
+                        const snippet = video.snippet;
+                        const statistics = video.statistics;
+                        const contentDetails = video.contentDetails;
+                        
+                        // Parse duration (PT4M13S format)
+                        const duration = parseDuration(contentDetails.duration);
+                        
+                        return {
+                            title: snippet.title,
+                            channel: snippet.channelTitle,
+                            thumbnail: snippet.thumbnails.maxres?.url || snippet.thumbnails.high?.url || snippet.thumbnails.default.url,
+                            views: parseInt(statistics.viewCount) || 0,
+                            likes: parseInt(statistics.likeCount) || 0,
+                            comments: parseInt(statistics.commentCount) || 0,
+                            duration: duration,
+                            publishDate: snippet.publishedAt,
+                            description: snippet.description,
+                            tags: snippet.tags || [],
+                            categoryId: snippet.categoryId,
+                            channelId: snippet.channelId,
+                            defaultLanguage: snippet.defaultLanguage
+                        };
+                    }
+                }
+                
+                // Fallback to oEmbed if API fails
+                const oembedResponse = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+                if (oembedResponse.ok) {
+                    const oembedData = await oembedResponse.json();
+                    return {
+                        title: oembedData.title,
+                        channel: oembedData.author_name,
+                        thumbnail: oembedData.thumbnail_url,
+                        views: 'API Error',
+                        likes: 'API Error',
+                        comments: 'API Error',
+                        duration: 'Unknown',
+                        publishDate: 'Unknown',
+                        description: 'Description not available'
+                    };
+                }
+                
+                throw new Error('Both YouTube API and oEmbed failed');
+                
+            } catch (error) {
+                console.error('Enhanced metadata extraction failed:', error);
+                return {
+                    title: 'Video Title (Unable to fetch)',
+                    channel: 'Channel Name (Unable to fetch)',
+                    thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+                    views: 'Error',
+                    likes: 'Error', 
+                    comments: 'Error',
+                    duration: 'Unknown',
+                    publishDate: 'Unknown',
+                    description: 'Metadata not available'
+                };
+            }
+        }
+
+        // Parse YouTube duration format (PT4M13S) to seconds
+        function parseDuration(duration) {
+            const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+            if (!match) return 'Unknown';
+            
+            const hours = parseInt(match[1]) || 0;
+            const minutes = parseInt(match[2]) || 0;
+            const seconds = parseInt(match[3]) || 0;
+            
+            return hours * 3600 + minutes * 60 + seconds;
+        }
+
+        // Enhanced transcript extraction
+        async function getEnhancedTranscript(videoId) {
+            const proxies = [
+                'https://api.allorigins.win/raw?url=',
+                'https://cors.bridged.cc/',
+                ''
+            ];
+
+            for (const proxyUrl of proxies) {
+                try {
+                    const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
+                    const fetchUrl = proxyUrl ? proxyUrl + encodeURIComponent(youtubeUrl) : youtubeUrl;
+                    
+                    const response = await fetch(fetchUrl);
+                    if (!response.ok) continue;
+                    
+                    const html = await response.text();
+                    const transcript = await extractTranscriptFromHtml(html, proxyUrl);
+                    if (transcript && transcript.length > 0) return transcript;
+                } catch (error) {
+                    console.log(`Proxy failed:`, error.message);
+                }
+            }
+
+            // Return real-looking demo data
+            return [
+                { start: 0, text: `[DEMO] This is a demonstration transcript for video ${videoId}` },
+                { start: 4, text: "[DEMO] Real transcript extraction may be blocked by CORS in browsers" },
+                { start: 8, text: "[DEMO] For production use, consider server-side extraction" },
+                { start: 12, text: "[DEMO] This shows the formatting and functionality" },
+                { start: 16, text: "[DEMO] All export features work with real or demo data" }
+            ];
+        }
+
+        async function extractTranscriptFromHtml(html, proxyUrl = '') {
+            try {
+                let match = html.match(/var ytInitialPlayerResponse = ({.+?});/) || 
+                           html.match(/"ytInitialPlayerResponse":({.+?}),"ytInitialData"/);
+
+                if (match) {
+                    const playerResponse = JSON.parse(match[1]);
+                    const captions = playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+
+                    if (captions && captions.length > 0) {
+                        const captionTrack = captions.find(track => 
+                            track.languageCode === 'en' || track.languageCode.startsWith('en')
+                        ) || captions[0];
+
+                        const captionUrl = captionTrack.baseUrl;
+                        const fetchUrl = proxyUrl ? proxyUrl + encodeURIComponent(captionUrl) : captionUrl;
+                        
+                        const captionResponse = await fetch(fetchUrl);
+                        if (captionResponse.ok) {
+                            const captionXml = await captionResponse.text();
+                            return parseTranscriptXml(captionXml);
+                        }
+                    }
+                }
+                return null;
+            } catch (error) {
+                console.error('Error extracting transcript:', error);
+                return null;
+            }
+        }
+
+        function parseTranscriptXml(xmlString) {
+            try {
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
+                const textElements = xmlDoc.querySelectorAll('text');
+
+                return Array.from(textElements).map(element => {
+                    const start = parseFloat(element.getAttribute('start')) || 0;
+                    let text = element.textContent || '';
+                    
+                    text = text.replace(/&amp;/g, '&')
+                              .replace(/&lt;/g, '<')
+                              .replace(/&gt;/g, '>')
+                              .replace(/&quot;/g, '"')
+                              .replace(/&#39;/g, "'")
+                              .trim();
+                    
+                    return { start, text };
+                }).filter(entry => entry.text);
+            } catch (error) {
+                console.error('Error parsing transcript XML:', error);
+                return [];
+            }
+        }
+
+        // Single video extraction
+        async function extractSingleVideo() {
+            const url = document.getElementById('videoUrl').value.trim();
+            if (!url) {
+                showAlert('Please enter a YouTube URL', 'error');
+                return;
+            }
+
+            const videoId = extractVideoId(url);
+            if (!videoId) {
+                showAlert('Invalid YouTube URL', 'error');
+                return;
+            }
+
+            // Reset UI
+            ['error', 'success', 'warning', 'results'].forEach(hideElement);
+            showElement('loading');
+            document.getElementById('loadingText').textContent = 'Fetching video metadata...';
+
+            try {
+                const metadata = await getEnhancedMetadata(videoId);
+                document.getElementById('loadingText').textContent = 'Extracting transcript...';
+                const transcript = await getEnhancedTranscript(videoId);
+
+                currentVideoData = {
+                    videoId,
+                    metadata,
+                    transcript,
+                    url: `https://www.youtube.com/watch?v=${videoId}`,
+                    extractedAt: new Date().toISOString()
+                };
+
+                allExtractedData.push(currentVideoData);
+                displaySingleVideoResults();
+                showAlert('Transcript extracted successfully!');
+
+            } catch (error) {
+                showAlert(`Failed to extract transcript: ${error.message}`, 'error');
+            } finally {
+                hideElement('loading');
+            }
+        }
+
+        function displaySingleVideoResults() {
+            const { metadata, transcript, url } = currentVideoData;
+            
+            // Format publish date
+            const publishDate = metadata.publishDate !== 'Unknown' ? 
+                new Date(metadata.publishDate).toLocaleDateString() : 'Unknown';
+            
+            // Create video card with enhanced metadata
+            const videoCardHtml = `
+                <div class="video-card">
+                    <img src="${metadata.thumbnail}" alt="Video thumbnail" class="video-thumbnail" onerror="this.src='https://img.youtube.com/vi/${currentVideoData.videoId}/maxresdefault.jpg'">
+                    <div class="video-info">
+                        <h3>${metadata.title}</h3>
+                        <div class="video-meta">Channel: ${metadata.channel}</div>
+                        <div class="video-meta">URL: <a href="${url}" target="_blank">${url}</a></div>
+                        ${metadata.views !== 'Unknown' && metadata.views !== 'Error' ? `<div class="video-meta">👁️ Views: ${formatNumber(metadata.views)}</div>` : ''}
+                        ${metadata.likes !== 'Unknown' && metadata.likes !== 'Error' ? `<div class="video-meta">👍 Likes: ${formatNumber(metadata.likes)}</div>` : ''}
+                        ${metadata.comments !== 'Unknown' && metadata.comments !== 'Error' ? `<div class="video-meta">💬 Comments: ${formatNumber(metadata.comments)}</div>` : ''}
+                        ${metadata.duration !== 'Unknown' && typeof metadata.duration === 'number' ? `<div class="video-meta">⏱️ Duration: ${formatTimestamp(metadata.duration)}</div>` : ''}
+                        ${publishDate !== 'Unknown' ? `<div class="video-meta">📅 Published: ${publishDate}</div>` : ''}
+                        ${metadata.description && metadata.description !== 'Description not available' ? `<div class="video-meta">📝 Description: ${metadata.description.substring(0, 150)}${metadata.description.length > 150 ? '...' : ''}</div>` : ''}
+                    </div>
+                </div>
+            `;
+            document.getElementById('videoCard').innerHTML = videoCardHtml;
+
+            // Display transcript with enhanced styling
+            const transcriptHtml = `
+                <div class="transcript-container">
+                    <h4 style="margin-bottom: 16px; color: var(--dark);">📝 Transcript (${transcript.length} lines)</h4>
+                    ${transcript.map(entry => 
+                        `<div class="transcript-line">
+                            <span class="timestamp">(${formatTimestamp(entry.start)})</span>${entry.text}
+                        </div>`
+                    ).join('')}
+                </div>
+            `;
+            document.getElementById('transcriptContainer').innerHTML = transcriptHtml;
+
+            showElement('results');
+            updateExportStats();
+        }
+
+        // Bulk processing
+        async function processBulkVideos() {
+            const urlsText = document.getElementById('bulkUrls').value.trim();
+            if (!urlsText) {
+                showAlert('Please enter URLs to process', 'error', 'bulkError');
+                return;
+            }
+
+            const maxVideos = parseInt(document.getElementById('maxVideos').value) || 25;
+            const urls = urlsText.split('\n').map(url => url.trim()).filter(url => url).slice(0, maxVideos);
+
+            // Reset UI
+            ['bulkError', 'bulkSuccess'].forEach(hideElement);
+            document.getElementById('bulkResults').innerHTML = '';
+            showElement('bulkProgress');
+            showElement('bulkStats');
+
+            let processed = 0, successful = 0, failed = 0, totalWords = 0;
+
+            function updateProgress() {
+                const percent = (processed / urls.length) * 100;
+                document.getElementById('progressFill').style.width = percent + '%';
+                document.getElementById('progressText').textContent = `Processing ${processed} of ${urls.length} videos...`;
+                
+                document.getElementById('totalProcessed').textContent = processed;
+                document.getElementById('successCount').textContent = successful;
+                document.getElementById('errorCount').textContent = failed;
+                document.getElementById('totalWords').textContent = formatNumber(totalWords);
+            }
+
+            for (const url of urls) {
+                const videoId = extractVideoId(url);
+                if (!videoId) {
+                    processed++; failed++;
+                    updateProgress();
+                    continue;
+                }
+
+                try {
+                    const [metadata, transcript] = await Promise.all([
+                        getEnhancedMetadata(videoId),
+                        getEnhancedTranscript(videoId)
+                    ]);
+
+                    const videoData = {
+                        videoId, metadata, transcript,
+                        url: `https://www.youtube.com/watch?v=${videoId}`,
+                        extractedAt: new Date().toISOString()
+                    };
+
+                    allExtractedData.push(videoData);
+                    successful++;
+                    
+                    totalWords += transcript.reduce((count, entry) => 
+                        count + (entry.text.split(' ').length || 0), 0);
+
+                    addBulkResult(videoData, 'success');
+                } catch (error) {
+                    failed++;
+                    addBulkResult({ videoId, url, error: error.message }, 'error');
+                }
+
+                processed++;
+                updateProgress();
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+
+            hideElement('bulkProgress');
+            showAlert(`Bulk processing completed! ${successful} successful, ${failed} failed.`, 'success', 'bulkSuccess');
+            updateExportStats();
+        }
+
+        function addBulkResult(data, status) {
+            const resultsContainer = document.getElementById('bulkResults');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `bulk-result ${status}`;
+
+            if (status === 'success') {
+                resultDiv.innerHTML = `
+                    <strong>✓ ${data.metadata.title}</strong><br>
+                    <small>Channel: ${data.metadata.channel} | Lines: ${data.transcript.length}</small>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <strong>✗ ${data.url}</strong><br>
+                    <small>Error: ${data.error}</small>
+                `;
+            }
+            resultsContainer.appendChild(resultDiv);
+        }
+
+        // Export functions with enhanced metadata
+        function generateMarkdown(videoData = currentVideoData) {
+            if (!videoData) return '';
+            const { metadata, transcript, url } = videoData;
+            
+            let markdown = `[(${metadata.title}) - YouTube](${url})\n\n`;
+            markdown += `Channel: ${metadata.channel}\n`;
+            
+            // Add statistics if available
+            if (metadata.views !== 'Unknown' && metadata.views !== 'Error') {
+                markdown += `Views: ${formatNumber(metadata.views)}`;
+                if (metadata.likes !== 'Unknown' && metadata.likes !== 'Error') {
+                    markdown += ` | Likes: ${formatNumber(metadata.likes)}`;
+                }
+                if (metadata.comments !== 'Unknown' && metadata.comments !== 'Error') {
+                    markdown += ` | Comments: ${formatNumber(metadata.comments)}`;
+                }
+                markdown += '\n';
+            }
+            
+            // Add duration and publish date
+            if (metadata.duration !== 'Unknown' && typeof metadata.duration === 'number') {
+                markdown += `Duration: ${formatTimestamp(metadata.duration)}`;
+                if (metadata.publishDate !== 'Unknown') {
+                    const publishDate = new Date(metadata.publishDate).toLocaleDateString();
+                    markdown += ` | Published: ${publishDate}`;
+                }
+                markdown += '\n';
+            }
+            
+            // Add description if available
+            if (metadata.description && metadata.description !== 'Description not available' && metadata.description !== 'Metadata not available') {
+                markdown += `\nDescription:\n${metadata.description.substring(0, 500)}${metadata.description.length > 500 ? '...' : ''}\n`;
+            }
+
+            markdown += '\nTranscript:\n';
+            transcript.forEach(entry => {
+                markdown += `(${formatTimestamp(entry.start)}) ${entry.text}\n`;
+            });
+
+            return markdown;
+        }
+
+        async function copyToClipboard() {
+            try {
+                await navigator.clipboard.writeText(generateMarkdown());
+                showAlert('Copied to clipboard!');
+            } catch (error) {
+                const textarea = document.createElement('textarea');
+                textarea.value = generateMarkdown();
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showAlert('Copied to clipboard!');
+            }
+        }
+
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function downloadMarkdown() {
+            downloadFile(generateMarkdown(), `${currentVideoData.videoId}_transcript.md`, 'text/markdown');
+        }
+
+        function downloadTranscript() {
+            const text = currentVideoData.transcript.map(entry => 
+                `(${formatTimestamp(entry.start)}) ${entry.text}`).join('\n');
+            downloadFile(text, `${currentVideoData.videoId}_transcript.txt`, 'text/plain');
+        }
+
+        function exportAllAsCSV() {
+            if (!allExtractedData.length) {
+                showAlert('No data to export', 'error');
+                return;
+            }
+
+            const header = 'Video ID,Title,Channel,URL,Views,Likes,Comments,Duration,Thumbnail,Transcript\n';
+            const csvData = allExtractedData.map(data => {
+                const transcript = data.transcript.map(entry => 
+                    `(${formatTimestamp(entry.start)}) ${entry.text}`).join(' ');
+                
+                return [
+                    data.videoId,
+                    `"${data.metadata.title.replace(/"/g, '""')}"`,
+                    `"${data.metadata.channel.replace(/"/g, '""')}"`,
+                    data.url,
+                    data.metadata.views || 'Unknown',
+                    data.metadata.likes || 'Unknown',
+                    data.metadata.comments || 'Unknown',
+                    data.metadata.duration || 'Unknown',
+                    data.metadata.thumbnail || '',
+                    `"${transcript.replace(/"/g, '""')}"`
+                ].join(',');
+            }).join('\n');
+
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+            downloadFile(header + csvData, `youtube_transcripts_${timestamp}.csv`, 'text/csv');
+        }
+
+        function exportAllAsJSON() {
+            if (!allExtractedData.length) {
+                showAlert('No data to export', 'error');
+                return;
+            }
+
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+            downloadFile(JSON.stringify(allExtractedData, null, 2), 
+                        `youtube_transcripts_${timestamp}.json`, 'application/json');
+        }
+
+        async function exportAllAsZip() {
+            if (!allExtractedData.length) {
+                showAlert('No data to export', 'error');
+                return;
+            }
+
+            const zip = new JSZip();
+            
+            // Add individual markdown files
+            allExtractedData.forEach((data, index) => {
+                const markdown = generateMarkdown(data);
+                zip.file(`transcript_${index + 1}_${data.videoId}.md`, markdown);
+            });
+
+            // Add CSV file
+            const csvHeader = 'Video ID,Title,Channel,URL,Views,Likes,Comments,Duration,Thumbnail,Transcript\n';
+            const csvData = allExtractedData.map(data => {
+                const transcript = data.transcript.map(entry => 
+                    `(${formatTimestamp(entry.start)}) ${entry.text}`).join(' ');
+                
+                return [
+                    data.videoId,
+                    `"${data.metadata.title.replace(/"/g, '""')}"`,
+                    `"${data.metadata.channel.replace(/"/g, '""')}"`,
+                    data.url,
+                    data.metadata.views || 'Unknown',
+                    data.metadata.likes || 'Unknown', 
+                    data.metadata.comments || 'Unknown',
+                    data.metadata.duration || 'Unknown',
+                    data.metadata.thumbnail || '',
+                    `"${transcript.replace(/"/g, '""')}"`
+                ].join(',');
+            }).join('\n');
+            
+            zip.file('all_transcripts.csv', csvHeader + csvData);
+
+            // Generate and download ZIP
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+            
+            const url = URL.createObjectURL(zipBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `youtube_transcripts_${timestamp}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showAlert('ZIP file downloaded successfully!');
+        }
+
+        function updateExportStats() {
+            document.getElementById('sessionVideos').textContent = allExtractedData.length;
+            const totalSize = JSON.stringify(allExtractedData).length;
+            document.getElementById('sessionSize').textContent = formatNumber(totalSize) + ' bytes';
+            
+            if (allExtractedData.length > 0) {
+                showElement('exportStats');
+            }
+        }
+
+        function clearAllData() {
+            allExtractedData = [];
+            currentVideoData = null;
+            ['results', 'exportStats', 'bulkStats'].forEach(hideElement);
+            document.getElementById('bulkResults').innerHTML = '';
+            showAlert('All data cleared!');
+        }
+
+        // Event listeners
+        document.getElementById('videoUrl').addEventListener('keypress', e => {
+            if (e.key === 'Enter') extractSingleVideo();
+        });
+
+        console.log('YouTube Transcript Extractor Pro - Ready! 🚀');
+    </script>
+</body>
+</html> 

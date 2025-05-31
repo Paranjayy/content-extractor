@@ -1,0 +1,1 @@
+import requests; print("Testing..."); resp = requests.post("http://localhost:5000/api/extract-url-metadata", json={"url": "https://x.com/gdb"}); print(resp.status_code, resp.json() if resp.status_code == 200 else resp.text)
