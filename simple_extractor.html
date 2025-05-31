@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simple URL Metadata Extractor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -496,6 +497,7 @@
                 <button class="tab active" onclick="switchTab('single')">🔗 Single URL</button>
                 <button class="tab" onclick="switchTab('bulk')">📋 Bulk URLs</button>
                 <button class="tab" onclick="switchTab('extract')">📝 Extract from Text</button>
+                <button class="tab" onclick="switchTab('reddit')">🔴 Reddit Downloader</button>
             </div>
 
             <!-- Single URL Tab -->
@@ -599,6 +601,66 @@
                 </div>
 
                 <div id="extractResults"></div>
+            </div>
+
+            <!-- Reddit Downloader Tab -->
+            <div class="tab-content" id="reddit-tab">
+                <div class="note">
+                    <strong>🔴 Reddit Downloader:</strong> Enhanced Reddit content extraction with comments, metadata, and multiple export formats!
+                </div>
+
+                <div class="input-group">
+                    <label for="redditInput">Enter Reddit URL (post, comment, or subreddit):</label>
+                    <input type="url" id="redditInput" class="url-input" placeholder="https://www.reddit.com/r/..." />
+                </div>
+
+                <div class="input-group">
+                    <label>📋 Download Options:</label>
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 10px;">
+                        <label style="display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" id="includeComments" checked>
+                            💬 Include Comments
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" id="includeMetadata" checked>
+                            📊 Include Metadata
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" id="includeImages" checked>
+                            🖼️ Include Images
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" id="includeAuthor" checked>
+                            👤 Include Author Info
+                        </label>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="maxComments">Max Comments to Download:</label>
+                    <select id="maxComments" class="url-input" style="width: auto;">
+                        <option value="25">25 comments</option>
+                        <option value="50" selected>50 comments</option>
+                        <option value="100">100 comments</option>
+                        <option value="250">250 comments</option>
+                        <option value="-1">All comments</option>
+                    </select>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="downloadRedditContent()">🔴 Download Reddit Content</button>
+                    <button class="btn btn-secondary" onclick="clearRedditResults()">🗑️ Clear</button>
+                </div>
+
+                <div class="progress-container" id="redditProgress" style="display: none;">
+                    <h4>Processing Reddit content...</h4>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="redditProgressFill"></div>
+                    </div>
+                    <p id="redditProgressText">Fetching data...</p>
+                </div>
+
+                <div id="redditResults"></div>
             </div>
         </div>
     </div>
@@ -1034,7 +1096,10 @@
             }
 
             const text = successfulResults.map(r => `${r.metadata.title}\n${r.url}\n${r.metadata.description}\n---\n`).join('\n');
-            downloadFile(text, 'url_metadata.txt', 'text/plain');
+            
+            // Generate meaningful filename based on content
+            const filename = generateDownloadFilename('text');
+            downloadFile(text, filename, 'text/plain');
         }
 
         function downloadAllAsCSV() {
@@ -1052,7 +1117,44 @@
                 return `"${r.url}","${title}","${description}","${domain}","${status}"`;
             }).join('\n');
 
-            downloadFile(header + csvData, 'url_metadata.csv', 'text/csv');
+            const filename = generateDownloadFilename('csv');
+            downloadFile(header + csvData, filename, 'text/csv');
+        }
+
+        // Generate meaningful filenames based on content
+        function generateDownloadFilename(extension) {
+            const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            
+            if (allExtractedResults.length === 0) {
+                return `url_metadata_${timestamp}.${extension}`;
+            }
+            
+            // Get the most common domain
+            const domains = allExtractedResults
+                .filter(r => r.success && r.metadata.domain)
+                .map(r => r.metadata.domain);
+                
+            if (domains.length === 0) {
+                return `url_metadata_${timestamp}.${extension}`;
+            }
+            
+            // Count domain frequencies
+            const domainCounts = {};
+            domains.forEach(domain => {
+                domainCounts[domain] = (domainCounts[domain] || 0) + 1;
+            });
+            
+            // Get most frequent domain
+            const topDomain = Object.keys(domainCounts)
+                .reduce((a, b) => domainCounts[a] > domainCounts[b] ? a : b);
+                
+            // Clean domain name for filename
+            const cleanDomain = topDomain.replace(/[^a-zA-Z0-9]/g, '_');
+            
+            // If multiple domains, indicate that
+            const domainSuffix = Object.keys(domainCounts).length > 1 ? '_and_others' : '';
+            
+            return `${cleanDomain}${domainSuffix}_${allExtractedResults.length}urls_${timestamp}.${extension}`;
         }
 
         function downloadFile(content, filename, mimeType) {
@@ -1249,6 +1351,333 @@
             switchTab('single');
             document.getElementById('urlInput').value = url;
             setTimeout(() => extractMetadata(), 500);
+        }
+
+        // Reddit Downloader Functions
+        async function downloadRedditContent() {
+            const url = document.getElementById('redditInput').value.trim();
+            if (!url) {
+                showRedditError('Please enter a Reddit URL');
+                return;
+            }
+
+            if (!url.includes('reddit.com')) {
+                showRedditError('Please enter a valid Reddit URL');
+                return;
+            }
+
+            // Show progress
+            document.getElementById('redditProgress').style.display = 'block';
+            document.getElementById('redditResults').innerHTML = '';
+            updateRedditProgress(0, 'Analyzing Reddit URL...');
+
+            try {
+                const options = {
+                    includeComments: document.getElementById('includeComments').checked,
+                    includeMetadata: document.getElementById('includeMetadata').checked,
+                    includeImages: document.getElementById('includeImages').checked,
+                    includeAuthor: document.getElementById('includeAuthor').checked,
+                    maxComments: parseInt(document.getElementById('maxComments').value)
+                };
+
+                updateRedditProgress(25, 'Fetching Reddit data...');
+                const redditData = await fetchRedditData(url, options);
+                
+                updateRedditProgress(75, 'Processing content...');
+                const processedContent = processRedditContent(redditData, options);
+                
+                updateRedditProgress(100, 'Complete!');
+                displayRedditResults(processedContent, url);
+                
+                setTimeout(() => {
+                    document.getElementById('redditProgress').style.display = 'none';
+                }, 1000);
+
+            } catch (error) {
+                showRedditError(`Failed to download Reddit content: ${error.message}`);
+                document.getElementById('redditProgress').style.display = 'none';
+            }
+        }
+
+        async function fetchRedditData(url, options) {
+            // Convert Reddit URL to JSON API format
+            let jsonUrl = url;
+            if (!url.endsWith('.json')) {
+                jsonUrl = url.replace(/\/$/, '') + '.json';
+            }
+            
+            // Add limit parameter for comments
+            if (options.maxComments > 0) {
+                const separator = jsonUrl.includes('?') ? '&' : '?';
+                jsonUrl += `${separator}limit=${options.maxComments}`;
+            }
+
+            const response = await fetch(jsonUrl);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: Unable to fetch Reddit data`);
+            }
+
+            const data = await response.json();
+            return data;
+        }
+
+        function processRedditContent(data, options) {
+            let content = {
+                post: null,
+                comments: [],
+                metadata: {},
+                images: []
+            };
+
+            try {
+                // Handle Reddit API response structure
+                if (Array.isArray(data) && data.length > 0) {
+                    // Post data
+                    const postData = data[0].data.children[0].data;
+                    content.post = {
+                        title: postData.title,
+                        selftext: postData.selftext,
+                        url: postData.url,
+                        author: postData.author,
+                        created: new Date(postData.created_utc * 1000).toISOString(),
+                        score: postData.score,
+                        upvote_ratio: postData.upvote_ratio,
+                        num_comments: postData.num_comments,
+                        subreddit: postData.subreddit,
+                        permalink: `https://reddit.com${postData.permalink}`
+                    };
+
+                    // Comments data
+                    if (data.length > 1 && options.includeComments) {
+                        const commentsData = data[1].data.children;
+                        content.comments = extractComments(commentsData);
+                    }
+
+                    // Metadata
+                    if (options.includeMetadata) {
+                        content.metadata = {
+                            extracted_at: new Date().toISOString(),
+                            post_id: postData.id,
+                            subreddit: postData.subreddit,
+                            post_type: postData.post_hint || 'text',
+                            total_comments: content.comments.length
+                        };
+                    }
+
+                    // Images
+                    if (options.includeImages && postData.preview) {
+                        content.images = extractImages(postData);
+                    }
+                }
+            } catch (error) {
+                console.warn('Error processing Reddit content:', error);
+            }
+
+            return content;
+        }
+
+        function extractComments(commentsData, level = 0) {
+            const comments = [];
+            
+            commentsData.forEach(comment => {
+                if (comment.kind === 't1' && comment.data.body) {
+                    comments.push({
+                        author: comment.data.author,
+                        body: comment.data.body,
+                        score: comment.data.score,
+                        created: new Date(comment.data.created_utc * 1000).toISOString(),
+                        level: level,
+                        id: comment.data.id,
+                        parent_id: comment.data.parent_id
+                    });
+
+                    // Recursively extract replies
+                    if (comment.data.replies && comment.data.replies.data) {
+                        const nestedComments = extractComments(comment.data.replies.data.children, level + 1);
+                        comments.push(...nestedComments);
+                    }
+                }
+            });
+
+            return comments;
+        }
+
+        function extractImages(postData) {
+            const images = [];
+            
+            if (postData.preview && postData.preview.images) {
+                postData.preview.images.forEach(img => {
+                    if (img.source && img.source.url) {
+                        images.push({
+                            url: img.source.url.replace(/&amp;/g, '&'),
+                            width: img.source.width,
+                            height: img.source.height
+                        });
+                    }
+                });
+            }
+
+            return images;
+        }
+
+        function displayRedditResults(content, originalUrl) {
+            const resultsDiv = document.getElementById('redditResults');
+            
+            const postTitle = content.post ? content.post.title : 'Reddit Content';
+            const cleanTitle = postTitle.replace(/[^a-zA-Z0-9\s]/g, '').substring(0, 50);
+            
+            resultsDiv.innerHTML = `
+                <div class="result-card success">
+                    <h3>🔴 Reddit Content Extracted</h3>
+                    <p><strong>Title:</strong> ${content.post ? content.post.title : 'N/A'}</p>
+                    <p><strong>Subreddit:</strong> r/${content.post ? content.post.subreddit : 'unknown'}</p>
+                    <p><strong>Comments:</strong> ${content.comments.length}</p>
+                    <p><strong>Images:</strong> ${content.images.length}</p>
+                    
+                    <div style="margin-top: 20px;">
+                        <h4>📥 Download Options:</h4>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
+                            <button class="btn btn-primary" onclick="downloadRedditMarkdown('${cleanTitle}')">📝 Download Markdown</button>
+                            <button class="btn btn-secondary" onclick="downloadRedditJSON('${cleanTitle}')">📄 Download JSON</button>
+                            <button class="btn btn-secondary" onclick="downloadRedditZip('${cleanTitle}')">📦 Download ZIP</button>
+                            <button class="copy-btn" onclick="copyRedditContent()">📋 Copy to Clipboard</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Store content globally for download functions
+            window.redditContent = content;
+            window.redditUrl = originalUrl;
+        }
+
+        function downloadRedditMarkdown(filename) {
+            if (!window.redditContent) return;
+            
+            const content = window.redditContent;
+            let markdown = `# ${content.post.title}\n\n`;
+            
+            markdown += `**Subreddit:** r/${content.post.subreddit}\n`;
+            markdown += `**Author:** u/${content.post.author}\n`;
+            markdown += `**Score:** ${content.post.score}\n`;
+            markdown += `**Comments:** ${content.post.num_comments}\n`;
+            markdown += `**URL:** ${content.post.permalink}\n\n`;
+            
+            if (content.post.selftext) {
+                markdown += `## Post Content\n\n${content.post.selftext}\n\n`;
+            }
+            
+            if (content.comments.length > 0) {
+                markdown += `## Comments (${content.comments.length})\n\n`;
+                content.comments.forEach((comment, index) => {
+                    const indent = '  '.repeat(comment.level);
+                    markdown += `${indent}**${comment.author}** (${comment.score} points):\n`;
+                    markdown += `${indent}${comment.body}\n\n`;
+                });
+            }
+            
+            const sanitizedFilename = `reddit_${filename.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.md`;
+            downloadFile(markdown, sanitizedFilename, 'text/markdown');
+        }
+
+        function downloadRedditJSON(filename) {
+            if (!window.redditContent) return;
+            
+            const jsonData = {
+                ...window.redditContent,
+                original_url: window.redditUrl,
+                extracted_at: new Date().toISOString()
+            };
+            
+            const sanitizedFilename = `reddit_${filename.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.json`;
+            downloadFile(JSON.stringify(jsonData, null, 2), sanitizedFilename, 'application/json');
+        }
+
+        async function downloadRedditZip(filename) {
+            if (!window.redditContent || typeof JSZip === 'undefined') {
+                alert('ZIP functionality requires JSZip library');
+                return;
+            }
+            
+            const zip = new JSZip();
+            const content = window.redditContent;
+            
+            // Add markdown file
+            const markdown = generateRedditMarkdown(content);
+            zip.file('reddit_post.md', markdown);
+            
+            // Add JSON file  
+            zip.file('reddit_data.json', JSON.stringify(content, null, 2));
+            
+            // Add images if any
+            if (content.images.length > 0) {
+                const imagesFolder = zip.folder('images');
+                content.images.forEach((img, index) => {
+                    imagesFolder.file(`image_${index + 1}.txt`, `Image URL: ${img.url}\nDimensions: ${img.width}x${img.height}`);
+                });
+            }
+            
+            // Generate and download ZIP
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            const sanitizedFilename = `reddit_${filename.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.zip`;
+            
+            const url = URL.createObjectURL(zipBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = sanitizedFilename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function generateRedditMarkdown(content) {
+            let markdown = `# ${content.post.title}\n\n`;
+            markdown += `**Subreddit:** r/${content.post.subreddit}\n`;
+            markdown += `**Author:** u/${content.post.author}\n`;
+            markdown += `**Score:** ${content.post.score}\n`;
+            markdown += `**Comments:** ${content.post.num_comments}\n`;
+            markdown += `**URL:** ${content.post.permalink}\n\n`;
+            
+            if (content.post.selftext) {
+                markdown += `## Post Content\n\n${content.post.selftext}\n\n`;
+            }
+            
+            if (content.comments.length > 0) {
+                markdown += `## Comments (${content.comments.length})\n\n`;
+                content.comments.forEach((comment, index) => {
+                    const indent = '  '.repeat(comment.level);
+                    markdown += `${indent}**${comment.author}** (${comment.score} points):\n`;
+                    markdown += `${indent}${comment.body}\n\n`;
+                });
+            }
+            
+            return markdown;
+        }
+
+        function copyRedditContent() {
+            if (!window.redditContent) return;
+            
+            const markdown = generateRedditMarkdown(window.redditContent);
+            navigator.clipboard.writeText(markdown).then(() => {
+                alert('Reddit content copied to clipboard!');
+            });
+        }
+
+        function updateRedditProgress(percent, text) {
+            document.getElementById('redditProgressFill').style.width = percent + '%';
+            document.getElementById('redditProgressText').textContent = text;
+        }
+
+        function showRedditError(message) {
+            const resultsDiv = document.getElementById('redditResults');
+            resultsDiv.innerHTML = `<div class="error"><strong>❌ Error:</strong> ${message}</div>`;
+        }
+
+        function clearRedditResults() {
+            document.getElementById('redditInput').value = '';
+            document.getElementById('redditResults').innerHTML = '';
+            document.getElementById('redditProgress').style.display = 'none';
+            window.redditContent = null;
+            window.redditUrl = null;
         }
 
         console.log('🔗 Simple URL Extractor loaded');
