@@ -927,6 +927,13 @@
                         🎬 Full YouTube App
                     </a>
                 </div>
+                
+                <!-- Backend Status Indicator -->
+                <div id="backendStatus" style="margin-top: 15px; text-align: center;">
+                    <span id="statusIndicator" style="font-size: 14px; padding: 4px 12px; border-radius: 12px; background: #f59e0b; color: white;">
+                        🔄 Checking backend...
+                    </span>
+                </div>
             </div>
 
             <div class="tabs">
@@ -2500,7 +2507,7 @@ Transcript:
                         // Parse duration (PT4M13S format)
                         const duration = parseDuration(contentDetails.duration);
                         
-                        return {
+                return {
                             title: snippet.title,
                             channel: snippet.channelTitle,
                             thumbnail: snippet.thumbnails.maxres?.url || snippet.thumbnails.high?.url || snippet.thumbnails.default.url,
@@ -3982,7 +3989,7 @@ Transcript:
                 } catch (error) {
                     failed++;
                     const failedData = {
-                        url: url,
+                    url: url,
                         title: urlSettings.includeDomainOnFail ? new URL(url).hostname : 'Failed to fetch title',
                         error: error.message,
                         domain: new URL(url).hostname,
@@ -4180,6 +4187,113 @@ Transcript:
                 }
             });
         }
+    </script>
+    
+    <script>
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('🚀 YouTube Transcript Extractor Pro - Initializing...');
+            
+            // Test backend connectivity
+            await checkBackendStatus();
+            
+            // Load saved settings
+            loadUserSettings();
+            
+            // Initialize UI
+            console.log('✅ Initialization complete');
+        });
+        
+        async function checkBackendStatus() {
+            const statusIndicator = document.getElementById('statusIndicator');
+            
+            try {
+                console.log('🔗 Testing backend connectivity...');
+                
+                // Create manual timeout for better browser compatibility
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                const response = await fetch(`${BACKEND_API_BASE}/health`, { 
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ Backend is healthy:', data);
+                    statusIndicator.style.background = '#10b981';
+                    statusIndicator.innerHTML = '✅ Backend Connected';
+                    window.isBackendConnected = true;
+                    return true;
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                console.warn('⚠️ Backend connectivity issues:', error);
+                statusIndicator.style.background = '#ef4444';
+                statusIndicator.innerHTML = '❌ Backend Offline';
+                window.isBackendConnected = false;
+                
+                // Show helpful message
+                setTimeout(() => {
+                    const backendDiv = document.getElementById('backendStatus');
+                    if (backendDiv && !backendDiv.querySelector('.error-details')) {
+                        const alertMsg = `
+                            <div class="error-details" style="margin-top: 10px; padding: 10px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; color: #dc2626; font-size: 12px;">
+                                <strong>Backend Connection Failed:</strong><br>
+                                • YouTube transcript extraction disabled<br>
+                                • URL conversion may have limited functionality<br>
+                                • Try the <a href="/simple_extractor.html" style="color: #dc2626;">Simple URL Extractor</a> for basic functionality
+                            </div>
+                        `;
+                        backendDiv.innerHTML += alertMsg;
+                    }
+                }, 1000);
+                
+                return false;
+            }
+        }
+        
+        function loadUserSettings() {
+            // Load any saved user preferences
+            try {
+                const savedTheme = localStorage.getItem('theme');
+                if (savedTheme) {
+                    document.body.setAttribute('data-theme', savedTheme);
+                }
+            } catch (error) {
+                console.log('No saved settings found');
+            }
+        }
+        
+        // Make backend connectivity available globally
+        window.isBackendConnected = false;
+        checkBackendStatus().then(connected => {
+            window.isBackendConnected = connected;
+        });
+        
+        // Periodic backend health check every 30 seconds
+        setInterval(async () => {
+            const wasConnected = window.isBackendConnected;
+            const isConnected = await checkBackendStatus();
+            
+            // If status changed, show notification
+            if (wasConnected !== isConnected) {
+                const message = isConnected 
+                    ? '✅ Backend connection restored!' 
+                    : '❌ Backend connection lost!';
+                    
+                console.log(message);
+                
+                // Update any status messages in the UI
+                const statusElements = document.querySelectorAll('.backend-status-message');
+                statusElements.forEach(el => {
+                    el.style.display = isConnected ? 'none' : 'block';
+                });
+            }
+        }, 30000); // Check every 30 seconds
     </script>
 </body>
 </html> 

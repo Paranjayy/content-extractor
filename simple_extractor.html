@@ -49,6 +49,49 @@
             padding: 30px;
         }
 
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-radius: 10px 10px 0 0;
+            margin: -30px -30px 20px -30px;
+            overflow-x: auto;
+        }
+
+        .tab {
+            flex: 1;
+            min-width: 120px;
+            padding: 15px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            white-space: nowrap;
+            color: #666;
+        }
+
+        .tab:hover { 
+            background: linear-gradient(45deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            color: #333;
+        }
+        
+        .tab.active {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border-bottom-color: #667eea;
+            color: white;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active { 
+            display: block; 
+        }
+
         .input-group {
             margin-bottom: 20px;
         }
@@ -214,6 +257,107 @@
                 margin: 10px auto;
             }
         }
+
+        .bulk-textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-family: monospace;
+            font-size: 14px;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        .bulk-textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .progress-container {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            transition: width 0.3s;
+            width: 0%;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .stat-number {
+            font-size: 1.8em;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .bulk-result {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #667eea;
+        }
+
+        .bulk-result.error {
+            border-left-color: #e53e3e;
+            background: #fed7d7;
+        }
+
+        .bulk-result.success {
+            border-left-color: #48bb78;
+            background: #c6f6d5;
+        }
+
+        .bulk-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .main-content {
+            padding: 0;
+        }
+
+        .tab-content {
+            padding: 30px;
+        }
     </style>
 </head>
 <body>
@@ -237,21 +381,108 @@
         </div>
 
         <div class="main-content">
-            <div class="note">
-                <strong>🌟 Browser-Only Solution:</strong> This tool works entirely in your browser using intelligent parsing and public APIs. No server needed!
+            <!-- Tabs Navigation -->
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('single')">🔗 Single URL</button>
+                <button class="tab" onclick="switchTab('bulk')">📋 Bulk URLs</button>
+                <button class="tab" onclick="switchTab('extract')">📝 Extract from Text</button>
             </div>
 
-            <div class="input-group">
-                <label for="urlInput">Enter URL to extract metadata:</label>
-                <input type="url" id="urlInput" class="url-input" placeholder="https://example.com/page" />
+            <!-- Single URL Tab -->
+            <div class="tab-content active" id="single-tab">
+                <div class="note">
+                    <strong>🌟 Browser-Only Solution:</strong> This tool works entirely in your browser using intelligent parsing and public APIs. No server needed!
+                </div>
+
+                <div class="input-group">
+                    <label for="urlInput">Enter URL to extract metadata:</label>
+                    <input type="url" id="urlInput" class="url-input" placeholder="https://example.com/page" />
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="extractMetadata()">🔍 Extract Metadata</button>
+                    <button class="btn btn-secondary" onclick="clearResults()">🗑️ Clear Results</button>
+                </div>
+
+                <div id="results"></div>
             </div>
 
-            <div class="btn-group">
-                <button class="btn btn-primary" onclick="extractMetadata()">🔍 Extract Metadata</button>
-                <button class="btn btn-secondary" onclick="clearResults()">🗑️ Clear Results</button>
+            <!-- Bulk URLs Tab -->
+            <div class="tab-content" id="bulk-tab">
+                <div class="note">
+                    <strong>📋 Bulk Processing:</strong> Enter multiple URLs (one per line) to process them all at once!
+                </div>
+
+                <div class="input-group">
+                    <label for="bulkUrlsInput">Enter URLs (one per line):</label>
+                    <textarea id="bulkUrlsInput" class="bulk-textarea" placeholder="https://example1.com&#10;https://example2.com&#10;https://example3.com"></textarea>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="processBulkUrls()">🚀 Process All URLs</button>
+                    <button class="btn btn-secondary" onclick="clearBulkResults()">🗑️ Clear All</button>
+                </div>
+
+                <div class="progress-container" id="bulkProgress">
+                    <h4>Processing URLs...</h4>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <p id="progressText">Processing 0 of 0 URLs...</p>
+                </div>
+
+                <div class="stats-grid" id="bulkStats" style="display: none;">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalProcessed">0</div>
+                        <div class="stat-label">Processed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="successCount">0</div>
+                        <div class="stat-label">Successful</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="errorCount">0</div>
+                        <div class="stat-label">Failed</div>
+                    </div>
+                </div>
+
+                <div class="bulk-actions" id="bulkActions" style="display: none;">
+                    <button class="btn btn-primary" onclick="copyAllResults()">📋 Copy All</button>
+                    <button class="btn btn-secondary" onclick="downloadAllAsText()">📄 Download TXT</button>
+                    <button class="btn btn-secondary" onclick="downloadAllAsCSV()">📊 Download CSV</button>
+                </div>
+
+                <div id="bulkResults"></div>
             </div>
 
-            <div id="results"></div>
+            <!-- Extract from Text Tab -->
+            <div class="tab-content" id="extract-tab">
+                <div class="note">
+                    <strong>📝 Text Extraction:</strong> Paste any text containing URLs and we'll automatically extract and process them!
+                </div>
+
+                <div class="input-group">
+                    <label for="textInput">Paste text containing URLs:</label>
+                    <textarea id="textInput" class="bulk-textarea" placeholder="Paste your text here... URLs will be automatically detected and extracted:&#10;&#10;Check out this cool video https://youtube.com/watch?v=example&#10;Also see this GitHub repo: https://github.com/user/repo"></textarea>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="extractUrlsFromText()">🔍 Extract URLs</button>
+                    <button class="btn btn-secondary" onclick="extractAndProcess()">⚡ Extract & Process</button>
+                    <button class="btn btn-secondary" onclick="clearExtractResults()">🗑️ Clear</button>
+                </div>
+
+                <div id="extractedUrls" style="display: none;">
+                    <h4>📋 Extracted URLs</h4>
+                    <div id="extractedUrlsList"></div>
+                    <div class="btn-group" style="margin-top: 15px;">
+                        <button class="btn btn-secondary" onclick="copyExtractedUrls()">📋 Copy URLs</button>
+                        <button class="btn btn-primary" onclick="processExtractedUrls()">🔗 Process All</button>
+                    </div>
+                </div>
+
+                <div id="extractResults"></div>
+            </div>
         </div>
     </div>
 
@@ -557,6 +788,278 @@
             'https://x.com/gdb',
             'https://paranjayy.github.io/my-notes-public/Markdown-Tips-and-Tricks'
         ];
+
+        console.log('🔗 Simple URL Extractor loaded');
+        console.log('📋 Test URLs:', testUrls);
+
+        // Global variables for bulk processing
+        let allExtractedResults = [];
+        let bulkStats = { processed: 0, successful: 0, failed: 0 };
+
+        // Tab Management
+        function switchTab(tabName) {
+            // Remove active class from all tabs and content
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            // Add active class to clicked tab and corresponding content
+            event.target.classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+        }
+
+        // Bulk URL Processing
+        async function processBulkUrls() {
+            const urlsText = document.getElementById('bulkUrlsInput').value.trim();
+            if (!urlsText) {
+                showBulkError('Please enter URLs to process');
+                return;
+            }
+
+            const urls = urlsText.split('\n').map(url => url.trim()).filter(url => url);
+            if (urls.length === 0) {
+                showBulkError('No valid URLs found');
+                return;
+            }
+
+            // Reset UI
+            document.getElementById('bulkResults').innerHTML = '';
+            document.getElementById('bulkProgress').style.display = 'block';
+            document.getElementById('bulkStats').style.display = 'grid';
+            document.getElementById('bulkActions').style.display = 'flex';
+
+            // Reset stats
+            bulkStats = { processed: 0, successful: 0, failed: 0 };
+            allExtractedResults = [];
+
+            for (let i = 0; i < urls.length; i++) {
+                const url = urls[i];
+                
+                // Update progress
+                const percent = ((i + 1) / urls.length) * 100;
+                document.getElementById('progressFill').style.width = percent + '%';
+                document.getElementById('progressText').textContent = `Processing ${i + 1} of ${urls.length} URLs...`;
+
+                try {
+                    const metadata = await extractor.extractMetadata(url);
+                    if (metadata.success) {
+                        bulkStats.successful++;
+                        allExtractedResults.push({ url, metadata, success: true });
+                        addBulkResult(url, metadata, 'success');
+                    } else {
+                        bulkStats.failed++;
+                        allExtractedResults.push({ url, metadata, success: false });
+                        addBulkResult(url, metadata, 'error');
+                    }
+                } catch (error) {
+                    bulkStats.failed++;
+                    const errorMetadata = { title: 'Error', description: error.message, success: false };
+                    allExtractedResults.push({ url, metadata: errorMetadata, success: false });
+                    addBulkResult(url, errorMetadata, 'error');
+                }
+
+                bulkStats.processed++;
+                updateBulkStats();
+
+                // Small delay to prevent overwhelming
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            document.getElementById('bulkProgress').style.display = 'none';
+        }
+
+        function addBulkResult(url, metadata, status) {
+            const resultsDiv = document.getElementById('bulkResults');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `bulk-result ${status}`;
+
+            const markdown = `[${metadata.title}](${url})`;
+            const thumbnailHtml = metadata.thumbnail 
+                ? `<img src="${metadata.thumbnail}" alt="Thumbnail" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px; float: right; margin-left: 10px;" onerror="this.style.display='none'">`
+                : '';
+
+            if (status === 'success') {
+                resultDiv.innerHTML = `
+                    ${thumbnailHtml}
+                    <div>
+                        <strong>✅ ${metadata.title}</strong><br>
+                        <small>🌐 ${metadata.domain} | ${metadata.description.substring(0, 80)}...</small><br>
+                        <code>${markdown}</code>
+                        <button class="copy-btn" onclick="copyToClipboard('${markdown.replace(/'/g, "\\'")}')">📋 Copy</button>
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <div>
+                        <strong>❌ ${url}</strong><br>
+                        <small>Error: ${metadata.description || metadata.error || 'Unknown error'}</small>
+                    </div>
+                `;
+            }
+
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        function updateBulkStats() {
+            document.getElementById('totalProcessed').textContent = bulkStats.processed;
+            document.getElementById('successCount').textContent = bulkStats.successful;
+            document.getElementById('errorCount').textContent = bulkStats.failed;
+        }
+
+        function showBulkError(message) {
+            const resultsDiv = document.getElementById('bulkResults');
+            resultsDiv.innerHTML = `<div class="error"><strong>❌ Error:</strong> ${message}</div>`;
+        }
+
+        function clearBulkResults() {
+            document.getElementById('bulkResults').innerHTML = '';
+            document.getElementById('bulkUrlsInput').value = '';
+            document.getElementById('bulkProgress').style.display = 'none';
+            document.getElementById('bulkStats').style.display = 'none';
+            document.getElementById('bulkActions').style.display = 'none';
+            allExtractedResults = [];
+            bulkStats = { processed: 0, successful: 0, failed: 0 };
+        }
+
+        // Export functions
+        function copyAllResults() {
+            const successfulResults = allExtractedResults.filter(r => r.success);
+            if (successfulResults.length === 0) {
+                alert('No successful results to copy!');
+                return;
+            }
+
+            const allMarkdown = successfulResults.map(r => `[${r.metadata.title}](${r.url})`).join('\n');
+            navigator.clipboard.writeText(allMarkdown).then(() => {
+                alert('All markdown links copied to clipboard!');
+            });
+        }
+
+        function downloadAllAsText() {
+            const successfulResults = allExtractedResults.filter(r => r.success);
+            if (successfulResults.length === 0) {
+                alert('No successful results to download!');
+                return;
+            }
+
+            const text = successfulResults.map(r => `${r.metadata.title}\n${r.url}\n${r.metadata.description}\n---\n`).join('\n');
+            downloadFile(text, 'url_metadata.txt', 'text/plain');
+        }
+
+        function downloadAllAsCSV() {
+            if (allExtractedResults.length === 0) {
+                alert('No results to download!');
+                return;
+            }
+
+            const header = 'URL,Title,Description,Domain,Status\n';
+            const csvData = allExtractedResults.map(r => {
+                const title = r.metadata.title.replace(/"/g, '""');
+                const description = r.metadata.description.replace(/"/g, '""');
+                const domain = r.metadata.domain || 'unknown';
+                const status = r.success ? 'Success' : 'Failed';
+                return `"${r.url}","${title}","${description}","${domain}","${status}"`;
+            }).join('\n');
+
+            downloadFile(header + csvData, 'url_metadata.csv', 'text/csv');
+        }
+
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Text extraction functions
+        function extractUrlsFromText() {
+            const text = document.getElementById('textInput').value.trim();
+            if (!text) {
+                showExtractError('Please enter text to extract URLs from');
+                return;
+            }
+
+            // Comprehensive URL regex
+            const urlRegex = /(https?:\/\/[^\s]+)/gi;
+            const urls = text.match(urlRegex) || [];
+
+            if (urls.length === 0) {
+                showExtractError('No URLs found in the text');
+                return;
+            }
+
+            // Remove duplicates
+            const uniqueUrls = [...new Set(urls)];
+            displayExtractedUrls(uniqueUrls);
+        }
+
+        function displayExtractedUrls(urls) {
+            const extractedDiv = document.getElementById('extractedUrls');
+            const listDiv = document.getElementById('extractedUrlsList');
+            
+            const urlsHtml = urls.map((url, index) => `
+                <div style="background: #f8f9fa; padding: 10px; margin: 5px 0; border-radius: 5px; border-left: 3px solid #667eea;">
+                    <strong>${index + 1}.</strong> <a href="${url}" target="_blank">${url}</a>
+                </div>
+            `).join('');
+            
+            listDiv.innerHTML = urlsHtml;
+            extractedDiv.style.display = 'block';
+            
+            // Store URLs for processing
+            window.currentExtractedUrls = urls;
+        }
+
+        function copyExtractedUrls() {
+            if (!window.currentExtractedUrls) {
+                alert('No URLs extracted to copy!');
+                return;
+            }
+            
+            const urlsText = window.currentExtractedUrls.join('\n');
+            navigator.clipboard.writeText(urlsText).then(() => {
+                alert('URLs copied to clipboard!');
+            });
+        }
+
+        function processExtractedUrls() {
+            if (!window.currentExtractedUrls) {
+                alert('No URLs extracted to process!');
+                return;
+            }
+            
+            // Switch to bulk tab and populate
+            switchTab('bulk');
+            document.getElementById('bulkUrlsInput').value = window.currentExtractedUrls.join('\n');
+            
+            // Auto-start processing
+            setTimeout(() => processBulkUrls(), 500);
+        }
+
+        function extractAndProcess() {
+            extractUrlsFromText();
+            setTimeout(() => {
+                if (window.currentExtractedUrls && window.currentExtractedUrls.length > 0) {
+                    processExtractedUrls();
+                }
+            }, 1000);
+        }
+
+        function showExtractError(message) {
+            const resultsDiv = document.getElementById('extractResults');
+            resultsDiv.innerHTML = `<div class="error"><strong>❌ Error:</strong> ${message}</div>`;
+        }
+
+        function clearExtractResults() {
+            document.getElementById('textInput').value = '';
+            document.getElementById('extractedUrls').style.display = 'none';
+            document.getElementById('extractResults').innerHTML = '';
+            window.currentExtractedUrls = null;
+        }
 
         console.log('🔗 Simple URL Extractor loaded');
         console.log('📋 Test URLs:', testUrls);
