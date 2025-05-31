@@ -14,7 +14,7 @@ print("=" * 60)
 
 for url in test_urls:
     try:
-        response = requests.post("http://localhost:5001/api/extract-url-metadata", 
+        response = requests.post("http://localhost:5002/api/extract-url-metadata", 
                                json={"url": url}, timeout=30)
         
         if response.status_code == 200:
@@ -24,6 +24,8 @@ for url in test_urls:
             print(f"Description: {data.get('description', 'N/A')[:100]}...")
             print(f"Domain: {data.get('domain', 'N/A')}")
             print(f"Thumbnail: {'Yes' if data.get('thumbnail') else 'No'}")
+            if data.get('og_data'):
+                print(f"Extra Data: {list(data['og_data'].keys())[:3]}")
         else:
             print(f"\n❌ FAILED: {url}")
             print(f"Status: {response.status_code}")

@@ -15,6 +15,10 @@
             --dark: #202124;
             --light: #f8f9fa;
             --border: #dadce0;
+            --card-bg: #1a1a1a;
+            --card-bg-light: #2a2a2a;
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa0a6;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -24,29 +28,31 @@
             line-height: 1.6;
             margin: 0;
             padding: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             min-height: 100vh;
-            color: var(--dark);
+            color: var(--text-primary);
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(26, 26, 26, 0.95);
             backdrop-filter: blur(10px);
             border-radius: 20px;
             margin-top: 20px;
             margin-bottom: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .card {
-            background: white;
+            background: var(--card-bg);
             border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
             overflow: hidden;
             margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .header {
@@ -69,8 +75,8 @@
 
         .tabs {
             display: flex;
-            background: var(--light);
-            border-bottom: 1px solid var(--border);
+            background: var(--card-bg-light);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             overflow-x: auto;
             scrollbar-width: none;
             -ms-overflow-style: none;
@@ -92,22 +98,25 @@
             transition: all 0.2s;
             border-bottom: 3px solid transparent;
             white-space: nowrap;
+            color: var(--text-secondary);
         }
 
         .tab:hover { 
-            background: linear-gradient(145deg, #e8f0fe, #f0f9ff);
+            background: linear-gradient(145deg, rgba(59, 130, 246, 0.1), rgba(99, 102, 241, 0.1));
+            color: var(--text-primary);
         }
         
         .tab.active {
-            background: linear-gradient(145deg, white, #f8fafc);
+            background: linear-gradient(145deg, var(--card-bg), #1a1a2e);
             border-bottom-color: var(--primary);
             color: var(--primary);
-            box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.3);
         }
 
         .tab-content {
             display: none;
             padding: 30px;
+            background: var(--card-bg);
         }
 
         .tab-content.active { display: block; }
@@ -121,15 +130,22 @@
         .input-field {
             flex: 1;
             padding: 14px 16px;
-            border: 2px solid var(--border);
+            border: 2px solid rgba(255, 255, 255, 0.2);
             border-radius: 8px;
             font-size: 16px;
             transition: border-color 0.2s;
+            background: var(--card-bg-light);
+            color: var(--text-primary);
         }
 
         .input-field:focus {
             outline: none;
             border-color: var(--primary);
+            background: rgba(26, 26, 46, 0.8);
+        }
+
+        .input-field::placeholder {
+            color: var(--text-secondary);
         }
 
         .btn {
@@ -216,11 +232,23 @@
             width: 100%;
             min-height: 120px;
             padding: 16px;
-            border: 2px solid var(--border);
+            border: 2px solid rgba(255, 255, 255, 0.2);
             border-radius: 8px;
             font-family: 'Monaco', 'Menlo', monospace;
             font-size: 14px;
             resize: vertical;
+            background: var(--card-bg-light);
+            color: var(--text-primary);
+        }
+
+        .textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: rgba(26, 26, 46, 0.8);
+        }
+
+        .textarea::placeholder {
+            color: var(--text-secondary);
         }
 
         .options-grid {
@@ -234,18 +262,20 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            color: var(--text-primary);
         }
 
         .loading {
             display: none;
             text-align: center;
             padding: 40px;
+            color: var(--text-primary);
         }
 
         .spinner {
             width: 40px;
             height: 40px;
-            border: 4px solid var(--light);
+            border: 4px solid rgba(255, 255, 255, 0.2);
             border-top: 4px solid var(--primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
@@ -264,18 +294,31 @@
             display: none;
         }
 
-        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .alert-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .alert-success { 
+            background: rgba(52, 168, 83, 0.15); 
+            color: #4ade80; 
+            border: 1px solid rgba(52, 168, 83, 0.3); 
+        }
+        .alert-danger { 
+            background: rgba(234, 67, 53, 0.15); 
+            color: #f87171; 
+            border: 1px solid rgba(234, 67, 53, 0.3); 
+        }
+        .alert-warning { 
+            background: rgba(251, 188, 4, 0.15); 
+            color: #fbbf24; 
+            border: 1px solid rgba(251, 188, 4, 0.3); 
+        }
 
         .video-card {
             display: grid;
             grid-template-columns: 320px 1fr;
             gap: 20px;
             padding: 20px;
-            border: 1px solid var(--border);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 12px;
             margin: 20px 0;
+            background: var(--card-bg);
         }
 
         .video-thumbnail {
@@ -287,12 +330,12 @@
 
         .video-info h3 {
             font-size: 1.3rem;
-            color: var(--dark);
+            color: var(--text-primary);
             margin-bottom: 8px;
         }
 
         .video-meta {
-            color: #5f6368;
+            color: var(--text-secondary);
             margin: 4px 0;
         }
 
@@ -306,8 +349,9 @@
         .stat-card {
             text-align: center;
             padding: 16px;
-            background: var(--light);
+            background: var(--card-bg-light);
             border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .stat-number {
@@ -318,17 +362,18 @@
 
         .stat-label {
             font-size: 0.9rem;
-            color: #5f6368;
+            color: var(--text-secondary);
         }
 
         .transcript-container {
             max-height: 400px;
             overflow-y: auto;
-            border: 1px solid var(--border);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 8px;
             padding: 20px;
-            background: #fafafa;
+            background: var(--card-bg-light);
             margin: 20px 0;
+            color: var(--text-primary);
         }
 
         .transcript-controls {
@@ -1197,8 +1242,8 @@ Transcript:
                             <h4>🚀 Backend Configuration</h4>
                             <p>Current backend status and configuration.</p>
                             <div class="input-group">
-                                <input type="text" class="input-field" id="backendUrl" 
-                                       value="http://localhost:5001/api" placeholder="Backend API URL">
+                                <input type="url" id="backendUrl" 
+                                       value="http://localhost:5002/api" placeholder="Backend API URL">
                                 <button class="btn btn-primary" onclick="testBackendConnection()">Test Connection</button>
                             </div>
                             <div id="backendStatus" style="margin-top: 8px;">
@@ -1544,7 +1589,7 @@ Transcript:
             defaultMaxVideos: 25,
             autoIncludeDescription: true,
             autoIncludeStats: true,
-            backendUrl: 'http://localhost:5001/api',
+            backendUrl: 'http://localhost:5002/api',
             includeTimestamps: true,
             detectDuplicates: true
         };
@@ -1554,7 +1599,7 @@ Transcript:
         const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3';
         
         // Backend API configuration
-        let BACKEND_API_BASE = 'http://localhost:5001/api';
+        let BACKEND_API_BASE = 'http://localhost:5002/api';
 
         // URL Converter data storage
         let allExtractedUrls = [];
@@ -2515,7 +2560,7 @@ Transcript:
                     const demoTranscript = [
                         { start: 0, text: `[DEMO] This is a demonstration transcript for video ${videoId}` },
                         { start: 4, text: "[DEMO] Real transcript extraction failed - using fallback" },
-                        { start: 8, text: "[DEMO] Backend server might not be running on localhost:5001" },
+                        { start: 8, text: "[DEMO] Backend server might not be running on localhost:5002" },
                         { start: 12, text: "[DEMO] Start the backend with: python3 app.py" },
                         { start: 16, text: "[DEMO] This shows the formatting and functionality" }
                     ];
