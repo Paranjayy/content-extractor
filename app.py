@@ -403,12 +403,24 @@ def serve_frontend():
 class UrlMetadataExtractor:
     def __init__(self):
         self.session = requests.Session()
+        # Use more realistic browser headers
         self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1',
+            'Cache-Control': 'max-age=0'
         })
 
     def extract_metadata(self, url, include_description=True, include_og_data=True):
-        """Extract metadata from URL with multiple fallback strategies"""
+        """Extract metadata from URL with improved fallback strategies"""
         try:
             # Clean URL
             if not url.startswith(('http://', 'https://')):
@@ -432,104 +444,192 @@ class UrlMetadataExtractor:
             return self._fallback_metadata(url, str(e))
 
     def _extract_reddit_metadata(self, url, include_description=True, include_og_data=True):
-        """Extract Reddit post metadata with API fallback"""
+        """Extract Reddit post metadata with improved strategies"""
         try:
-            # Try Reddit JSON API first
+            # First try: JSON API (most reliable)
             json_url = url.rstrip('/') + '.json'
-            response = self.session.get(json_url, timeout=10)
+            headers = {'User-Agent': 'URLMetadataBot/1.0'}
+            response = self.session.get(json_url, headers=headers, timeout=10)
             
             if response.status_code == 200:
-                data = response.json()
-                if data and len(data) > 0 and 'data' in data[0]:
-                    post_data = data[0]['data']['children'][0]['data']
-                    
-                    # Format title as [title : r/subreddit](url)
-                    raw_title = post_data.get('title', 'Reddit Post')
-                    subreddit = post_data.get('subreddit', 'unknown')
-                    title = f"{raw_title} : r/{subreddit}"
-                    
-                    description = post_data.get('selftext', '')[:200] + '...' if post_data.get('selftext') else f"r/{subreddit} • {post_data.get('score', 0)} upvotes"
-                    thumbnail = post_data.get('thumbnail') if post_data.get('thumbnail') not in ['self', 'default', ''] else None
-                    
-                    return {
-                        'title': title,
-                        'description': description if include_description else '',
-                        'thumbnail': thumbnail,
-                        'domain': 'reddit.com',
-                        'og_data': {
-                            'subreddit': post_data.get('subreddit'),
-                            'score': post_data.get('score'),
-                            'num_comments': post_data.get('num_comments'),
-                            'author': post_data.get('author')
-                        } if include_og_data else {}
-                    }
+                try:
+                    data = response.json()
+                    if data and len(data) > 0 and 'data' in data[0]:
+                        post_data = data[0]['data']['children'][0]['data']
+                        
+                        raw_title = post_data.get('title', 'Reddit Post')
+                        subreddit = post_data.get('subreddit', 'unknown')
+                        title = f"{raw_title} : r/{subreddit}"
+                        
+                        selftext = post_data.get('selftext', '')
+                        if selftext and len(selftext) > 10:
+                            description = selftext[:200] + '...'
+                        else:
+                            description = f"r/{subreddit} • {post_data.get('score', 0)} upvotes • {post_data.get('num_comments', 0)} comments"
+                        
+                        # Try to get thumbnail
+                        thumbnail = None
+                        if post_data.get('thumbnail') and post_data['thumbnail'] not in ['self', 'default', 'nsfw', '']:
+                            thumbnail = post_data['thumbnail']
+                        elif post_data.get('url') and any(ext in post_data['url'] for ext in ['.jpg', '.png', '.gif', '.jpeg']):
+                            thumbnail = post_data['url']
+                        
+                        return {
+                            'title': title,
+                            'description': description if include_description else '',
+                            'thumbnail': thumbnail,
+                            'domain': 'reddit.com',
+                            'og_data': {
+                                'subreddit': post_data.get('subreddit'),
+                                'score': post_data.get('score'),
+                                'num_comments': post_data.get('num_comments'),
+                                'author': post_data.get('author'),
+                                'created_utc': post_data.get('created_utc')
+                            } if include_og_data else {}
+                        }
+                except json.JSONDecodeError:
+                    print("Failed to parse Reddit JSON")
         except Exception as e:
-            print(f"Reddit API failed: {e}")
+            print(f"Reddit JSON API failed: {e}")
         
-        # Fallback to generic scraping
-        return self._extract_generic_metadata(url, include_description, include_og_data)
-
-    def _extract_twitter_metadata(self, url, include_description=True, include_og_data=True):
-        """Extract Twitter/X metadata with fallback strategies"""
+        # Second try: Old Reddit (more lenient)
         try:
-            # Try different user agents for Twitter
-            headers = {
-                'User-Agent': 'Twitterbot/1.0',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.5',
-                'Accept-Encoding': 'gzip, deflate',
-                'Connection': 'keep-alive',
-            }
-            
-            response = self.session.get(url, headers=headers, timeout=10)
+            old_reddit_url = url.replace('www.reddit.com', 'old.reddit.com').replace('reddit.com', 'old.reddit.com')
+            response = self.session.get(old_reddit_url, timeout=10)
             if response.status_code == 200:
                 soup = BeautifulSoup(response.text, 'html.parser')
                 
-                # Extract tweet content
-                title = self.extract_title(soup, url)
-                description = self.extract_description(soup) if include_description else ''
-                og_data = self.extract_og_data(soup) if include_og_data else {}
-                
-                # Look for Twitter-specific meta tags
-                twitter_title = soup.find('meta', {'name': 'twitter:title'})
-                twitter_desc = soup.find('meta', {'name': 'twitter:description'})
-                twitter_image = soup.find('meta', {'name': 'twitter:image'})
-                
-                if twitter_title:
-                    title = twitter_title.get('content', title)
-                if twitter_desc and include_description:
-                    description = twitter_desc.get('content', description)
-                
-                thumbnail = None
-                if twitter_image:
-                    thumbnail = twitter_image.get('content')
-                elif og_data.get('image'):
-                    thumbnail = og_data['image']
-                
-                return {
-                    'title': title or 'X/Twitter Post',
-                    'description': description,
-                    'thumbnail': thumbnail,
-                    'domain': 'x.com' if 'x.com' in url else 'twitter.com',
-                    'og_data': og_data
-                }
+                # Extract title from old reddit format
+                title_element = soup.find('a', class_='title') or soup.find('h1')
+                if title_element:
+                    title = title_element.get_text().strip()
+                    
+                    # Try to get subreddit
+                    subreddit_element = soup.find('a', href=re.compile(r'/r/\w+'))
+                    subreddit = 'unknown'
+                    if subreddit_element:
+                        subreddit = subreddit_element.get_text().replace('/r/', '').replace('r/', '')
+                    
+                    final_title = f"{title} : r/{subreddit}"
+                    
+                    return {
+                        'title': final_title,
+                        'description': f"Reddit post from r/{subreddit}" if include_description else '',
+                        'thumbnail': None,
+                        'domain': 'reddit.com',
+                        'og_data': {'subreddit': subreddit} if include_og_data else {}
+                    }
         except Exception as e:
-            print(f"Twitter extraction failed: {e}")
+            print(f"Old Reddit fallback failed: {e}")
         
-        # Fallback to generic extraction
+        # Final fallback to generic extraction
         return self._extract_generic_metadata(url, include_description, include_og_data)
 
+    def _extract_twitter_metadata(self, url, include_description=True, include_og_data=True):
+        """Extract Twitter/X metadata with multiple strategies to bypass bot detection"""
+        strategies = [
+            # Strategy 1: Mobile user agent (often less restricted)
+            {
+                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            },
+            # Strategy 2: Twitter app user agent
+            {
+                'User-Agent': 'Twitterbot/1.0',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            },
+            # Strategy 3: Generic bot (sometimes works)
+            {
+                'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            },
+            # Strategy 4: Try without authentication requirements
+            {
+                'User-Agent': 'curl/7.64.1',
+                'Accept': '*/*',
+            }
+        ]
+        
+        for i, headers in enumerate(strategies):
+            try:
+                print(f"Twitter extraction strategy {i+1}")
+                response = self.session.get(url, headers=headers, timeout=10)
+                
+                if response.status_code == 200:
+                    soup = BeautifulSoup(response.text, 'html.parser')
+                    
+                    # Check if we got blocked (common X.com blocking patterns)
+                    if 'JavaScript is not available' in response.text or 'Enable JavaScript' in response.text:
+                        print(f"Strategy {i+1}: JavaScript requirement detected")
+                        continue
+                    
+                    # Extract title
+                    title = self.extract_title(soup, url)
+                    
+                    # Skip if we got generic blocking page
+                    if 'JavaScript is not available' in title or len(title) < 5:
+                        continue
+                    
+                    description = self.extract_description(soup) if include_description else ''
+                    og_data = self.extract_og_data(soup) if include_og_data else {}
+                    
+                    # Look for Twitter-specific meta tags
+                    twitter_title = soup.find('meta', {'name': 'twitter:title'})
+                    twitter_desc = soup.find('meta', {'name': 'twitter:description'})
+                    twitter_image = soup.find('meta', {'name': 'twitter:image'})
+                    
+                    if twitter_title and twitter_title.get('content'):
+                        title = twitter_title.get('content')
+                    if twitter_desc and twitter_desc.get('content') and include_description:
+                        description = twitter_desc.get('content')
+                    
+                    thumbnail = None
+                    if twitter_image and twitter_image.get('content'):
+                        thumbnail = twitter_image.get('content')
+                    elif og_data.get('image'):
+                        thumbnail = og_data['image']
+                    
+                    # If we got meaningful content, return it
+                    if len(title) > 5 and not 'JavaScript' in title:
+                        return {
+                            'title': title,
+                            'description': description,
+                            'thumbnail': thumbnail,
+                            'domain': 'x.com' if 'x.com' in url else 'twitter.com',
+                            'og_data': og_data
+                        }
+                        
+            except Exception as e:
+                print(f"Twitter strategy {i+1} failed: {e}")
+                continue
+        
+        # All strategies failed - return minimal info
+        print("All Twitter extraction strategies failed")
+        return {
+            'title': 'X/Twitter Post (Limited Access)',
+            'description': 'Content not accessible due to platform restrictions' if include_description else '',
+            'thumbnail': 'https://abs.twimg.com/favicons/twitter.3.ico',
+            'domain': 'x.com' if 'x.com' in url else 'twitter.com',
+            'og_data': {'platform': 'twitter', 'access_limited': True} if include_og_data else {}
+        }
+
     def _extract_youtube_metadata(self, url, include_description=True, include_og_data=True):
-        """Extract YouTube metadata using video ID extraction"""
+        """Extract YouTube metadata using multiple methods"""
         try:
             extractor = TranscriptExtractor()
             video_id = extractor.extract_video_id(url)
             
             if video_id:
                 metadata = extractor.get_enhanced_metadata(video_id)
+                description = ''
+                if include_description and metadata['description']:
+                    # Truncate long descriptions
+                    desc = metadata['description']
+                    description = desc[:300] + '...' if len(desc) > 300 else desc
+                
                 return {
                     'title': metadata['title'],
-                    'description': metadata['description'][:200] + '...' if include_description and metadata['description'] else '',
+                    'description': description,
                     'thumbnail': metadata['thumbnail'],
                     'domain': 'youtube.com',
                     'og_data': {
@@ -542,69 +642,68 @@ class UrlMetadataExtractor:
         except Exception as e:
             print(f"YouTube extraction failed: {e}")
         
+        # Fallback to generic extraction
         return self._extract_generic_metadata(url, include_description, include_og_data)
 
     def _extract_github_metadata(self, url, include_description=True, include_og_data=True):
-        """Extract GitHub repository metadata with API fallback"""
+        """Extract GitHub repository metadata with API and fallback strategies"""
         try:
-            # Try GitHub API for repositories
-            if '/tree/' in url or '/blob/' in url or '/releases/' in url or '/issues/' in url:
-                # For file/tree URLs, extract repo info
-                parts = url.replace('https://github.com/', '').split('/')
-                if len(parts) >= 2:
-                    api_url = f"https://api.github.com/repos/{parts[0]}/{parts[1]}"
-                    response = self.session.get(api_url, timeout=10)
+            # Try to parse GitHub URL to get owner/repo
+            url_parts = url.replace('https://github.com/', '').rstrip('/').split('/')
+            
+            if len(url_parts) >= 2:
+                owner, repo = url_parts[0], url_parts[1]
+                
+                # Try GitHub API first (no auth needed for public repos)
+                try:
+                    api_url = f"https://api.github.com/repos/{owner}/{repo}"
+                    api_headers = {
+                        'Accept': 'application/vnd.github.v3+json',
+                        'User-Agent': 'URLMetadataExtractor/1.0'
+                    }
+                    response = self.session.get(api_url, headers=api_headers, timeout=10)
                     
                     if response.status_code == 200:
                         repo_data = response.json()
-                        title = f"{repo_data['name']} - {repo_data['full_name']}"
+                        
+                        # Determine if it's a specific file/folder or main repo
+                        if len(url_parts) > 2:
+                            # It's a file or subfolder
+                            path_part = '/'.join(url_parts[2:])
+                            title = f"{repo_data['name']} - {path_part}"
+                        else:
+                            # Main repository
+                            title = f"GitHub - {repo_data['full_name']}"
+                        
                         description = repo_data.get('description', '') if include_description else ''
                         
                         return {
                             'title': title,
-                            'description': description if include_description else '',
+                            'description': description,
                             'thumbnail': repo_data['owner']['avatar_url'],
                             'domain': 'github.com',
                             'og_data': {
                                 'stars': repo_data.get('stargazers_count'),
                                 'forks': repo_data.get('forks_count'),
                                 'language': repo_data.get('language'),
-                                'owner': repo_data['owner']['login']
+                                'owner': repo_data['owner']['login'],
+                                'updated_at': repo_data.get('updated_at')
                             } if include_og_data else {}
                         }
-            elif '/repos/' in url or url.count('/') == 4:  # Direct repo URL
-                # Extract owner/repo from direct repo URL
-                parts = url.replace('https://github.com/', '').rstrip('/').split('/')
-                if len(parts) >= 2:
-                    api_url = f"https://api.github.com/repos/{parts[0]}/{parts[1]}"
-                    response = self.session.get(api_url, timeout=10)
+                except Exception as api_error:
+                    print(f"GitHub API failed: {api_error}")
                     
-                    if response.status_code == 200:
-                        repo_data = response.json()
-                        title = f"GitHub - {repo_data['full_name']}"
-                        description = repo_data.get('description', '') if include_description else ''
-                        
-                        return {
-                            'title': title,
-                            'description': description if include_description else '',
-                            'thumbnail': repo_data['owner']['avatar_url'],
-                            'domain': 'github.com',
-                            'og_data': {
-                                'stars': repo_data.get('stargazers_count'),
-                                'forks': repo_data.get('forks_count'),
-                                'language': repo_data.get('language'),
-                                'owner': repo_data['owner']['login']
-                            } if include_og_data else {}
-                        }
         except Exception as e:
-            print(f"GitHub API failed: {e}")
+            print(f"GitHub URL parsing failed: {e}")
         
+        # Fallback to generic extraction
         return self._extract_generic_metadata(url, include_description, include_og_data)
 
     def _extract_generic_metadata(self, url, include_description=True, include_og_data=True):
-        """Generic metadata extraction with multiple fallback strategies"""
+        """Improved generic metadata extraction with better error handling"""
         try:
-            response = self.session.get(url, timeout=10)
+            # Use session with proper headers
+            response = self.session.get(url, timeout=15)
             response.raise_for_status()
             
             soup = BeautifulSoup(response.text, 'html.parser')
@@ -613,32 +712,8 @@ class UrlMetadataExtractor:
             description = self.extract_description(soup) if include_description else ''
             og_data = self.extract_og_data(soup) if include_og_data else {}
             
-            # Extract thumbnail from various sources
-            thumbnail = None
-            
-            # Try Open Graph image
-            og_image = soup.find('meta', property='og:image')
-            if og_image:
-                thumbnail = og_image.get('content')
-            
-            # Try Twitter card image
-            if not thumbnail:
-                twitter_image = soup.find('meta', {'name': 'twitter:image'})
-                if twitter_image:
-                    thumbnail = twitter_image.get('content')
-            
-            # Try favicon as fallback
-            if not thumbnail:
-                favicon = soup.find('link', rel='icon') or soup.find('link', rel='shortcut icon')
-                if favicon:
-                    favicon_url = favicon.get('href')
-                    if favicon_url:
-                        if favicon_url.startswith('//'):
-                            favicon_url = 'https:' + favicon_url
-                        elif favicon_url.startswith('/'):
-                            domain = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
-                            favicon_url = domain + favicon_url
-                        thumbnail = favicon_url
+            # Extract thumbnail with multiple strategies
+            thumbnail = self._extract_best_thumbnail(soup, url, og_data)
             
             return {
                 'title': title,
@@ -649,22 +724,94 @@ class UrlMetadataExtractor:
             }
             
         except requests.exceptions.Timeout:
-            return self._fallback_metadata(url, "Request timeout")
+            return self._fallback_metadata(url, "Request timeout (15s)")
+        except requests.exceptions.HTTPError as e:
+            return self._fallback_metadata(url, f"HTTP error: {e.response.status_code}")
         except requests.exceptions.RequestException as e:
             return self._fallback_metadata(url, f"Request failed: {str(e)}")
         except Exception as e:
-            return self._fallback_metadata(url, f"Parsing failed: {str(e)}")
+            return self._fallback_metadata(url, f"Parsing error: {str(e)}")
+
+    def _extract_best_thumbnail(self, soup, url, og_data):
+        """Extract the best available thumbnail/image"""
+        # Strategy 1: Open Graph image (highest priority)
+        if og_data.get('image'):
+            return self._resolve_relative_url(og_data['image'], url)
+        
+        # Strategy 2: Twitter card image
+        twitter_image = soup.find('meta', {'name': 'twitter:image'})
+        if twitter_image and twitter_image.get('content'):
+            return self._resolve_relative_url(twitter_image.get('content'), url)
+        
+        # Strategy 3: Apple touch icon
+        apple_icon = soup.find('link', rel='apple-touch-icon')
+        if apple_icon and apple_icon.get('href'):
+            return self._resolve_relative_url(apple_icon.get('href'), url)
+        
+        # Strategy 4: Favicon
+        favicon = soup.find('link', rel=lambda x: x and 'icon' in x.lower())
+        if favicon and favicon.get('href'):
+            return self._resolve_relative_url(favicon.get('href'), url)
+        
+        # Strategy 5: First meaningful image in content
+        for img in soup.find_all('img', src=True):
+            src = img.get('src')
+            if src and not any(skip in src.lower() for skip in ['logo', 'icon', 'button', 'arrow']):
+                return self._resolve_relative_url(src, url)
+        
+        return None
+
+    def _resolve_relative_url(self, url_or_path, base_url):
+        """Convert relative URLs to absolute URLs"""
+        if not url_or_path:
+            return None
+            
+        if url_or_path.startswith('//'):
+            return 'https:' + url_or_path
+        elif url_or_path.startswith('/'):
+            parsed_base = urlparse(base_url)
+            return f"{parsed_base.scheme}://{parsed_base.netloc}{url_or_path}"
+        elif url_or_path.startswith('http'):
+            return url_or_path
+        else:
+            # Relative path
+            base_dir = '/'.join(base_url.rstrip('/').split('/')[:-1])
+            return f"{base_dir}/{url_or_path}"
 
     def _fallback_metadata(self, url, error_msg):
-        """Fallback metadata when all extraction methods fail"""
+        """Enhanced fallback metadata when all extraction methods fail"""
         domain = urlparse(url).netloc
+        
+        # Try to make intelligent guesses based on domain
+        if 'twitter.com' in domain or 'x.com' in domain:
+            title = 'X/Twitter Post'
+            description = 'Twitter/X content (access limited)'
+            thumbnail = 'https://abs.twimg.com/favicons/twitter.3.ico'
+        elif 'reddit.com' in domain:
+            title = 'Reddit Post'
+            description = 'Reddit content (access limited)'  
+            thumbnail = 'https://www.redditstatic.com/favicon.ico'
+        elif 'youtube.com' in domain:
+            title = 'YouTube Video'
+            description = 'YouTube content (access limited)'
+            thumbnail = 'https://www.youtube.com/favicon.ico'
+        elif 'github.com' in domain:
+            title = 'GitHub Repository'
+            description = 'GitHub content (access limited)'
+            thumbnail = 'https://github.com/favicon.ico'
+        else:
+            title = domain.replace('www.', '').title()
+            description = f'Content from {domain}'
+            thumbnail = f'https://www.google.com/s2/favicons?domain={domain}&sz=64'
+        
         return {
-            'title': domain,
-            'description': f"Unable to fetch URL metadata from any source",
-            'thumbnail': None,
+            'title': title,
+            'description': description,
+            'thumbnail': thumbnail,
             'domain': domain,
             'og_data': {},
-            'error': error_msg
+            'error': error_msg,
+            'fallback': True
         }
 
     def extract_title(self, soup, url):

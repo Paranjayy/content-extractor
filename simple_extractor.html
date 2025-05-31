@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple URL Metadata Extractor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .main-content {
+            padding: 30px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .url-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .url-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            flex: 1;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #333;
+            border: 2px solid #e0e0e0;
+        }
+
+        .btn-secondary:hover {
+            background: #e9ecef;
+        }
+
+        .result-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .result-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .result-meta {
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .result-thumbnail {
+            max-width: 100px;
+            max-height: 100px;
+            border-radius: 8px;
+            float: right;
+            margin-left: 15px;
+        }
+
+        .markdown-output {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            margin-top: 15px;
+            word-break: break-all;
+        }
+
+        .copy-btn {
+            background: #48bb78;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 14px;
+        }
+
+        .copy-btn:hover {
+            background: #38a169;
+        }
+
+        .error {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #e53e3e;
+        }
+
+        .note {
+            background: #bee3f8;
+            color: #2b6cb0;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #3182ce;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 600px) {
+            .btn-group {
+                flex-direction: column;
+            }
+            
+            .result-thumbnail {
+                float: none;
+                display: block;
+                margin: 10px auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 Simple URL Extractor</h1>
+            <p>Extract metadata from any URL - No backend required!</p>
+        </div>
+
+        <div class="main-content">
+            <div class="note">
+                <strong>🌟 Browser-Only Solution:</strong> This tool works entirely in your browser using intelligent parsing and public APIs. No server needed!
+            </div>
+
+            <div class="input-group">
+                <label for="urlInput">Enter URL to extract metadata:</label>
+                <input type="url" id="urlInput" class="url-input" placeholder="https://example.com/page" />
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="extractMetadata()">🔍 Extract Metadata</button>
+                <button class="btn btn-secondary" onclick="clearResults()">🗑️ Clear Results</button>
+            </div>
+
+            <div id="results"></div>
+        </div>
+    </div>
+
+    <script>
+        // Simple URL metadata extractor that works in browser
+        class SimpleUrlExtractor {
+            constructor() {
+                this.cache = new Map();
+            }
+
+            async extractMetadata(url) {
+                try {
+                    // Normalize URL
+                    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                        url = 'https://' + url;
+                    }
+
+                    const domain = new URL(url).hostname.toLowerCase();
+
+                    // Check cache first
+                    if (this.cache.has(url)) {
+                        return this.cache.get(url);
+                    }
+
+                    let result = null;
+
+                    // Special handling for different platforms
+                    if (domain.includes('youtube.com') || domain.includes('youtu.be')) {
+                        result = await this.extractYouTubeMetadata(url);
+                    } else if (domain.includes('github.com')) {
+                        result = await this.extractGitHubMetadata(url);
+                    } else if (domain.includes('reddit.com')) {
+                        result = await this.extractRedditMetadata(url);
+                    } else if (domain.includes('twitter.com') || domain.includes('x.com')) {
+                        result = this.extractTwitterMetadata(url);
+                    } else {
+                        result = await this.extractGenericMetadata(url);
+                    }
+
+                    // Cache result
+                    this.cache.set(url, result);
+                    return result;
+
+                } catch (error) {
+                    return this.getFallbackMetadata(url, error.message);
+                }
+            }
+
+            async extractYouTubeMetadata(url) {
+                try {
+                    const videoId = this.extractYouTubeVideoId(url);
+                    if (videoId) {
+                        // Use YouTube oEmbed API
+                        const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
+                        const response = await fetch(oembedUrl);
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            return {
+                                title: data.title,
+                                description: `YouTube video by ${data.author_name}`,
+                                thumbnail: data.thumbnail_url,
+                                domain: 'youtube.com',
+                                success: true
+                            };
+                        }
+                    }
+                    throw new Error('YouTube oEmbed failed');
+                } catch (error) {
+                    return this.getFallbackMetadata(url, 'YouTube metadata extraction failed');
+                }
+            }
+
+            async extractGitHubMetadata(url) {
+                try {
+                    const pathParts = new URL(url).pathname.split('/').filter(p => p);
+                    if (pathParts.length >= 2) {
+                        const owner = pathParts[0];
+                        const repo = pathParts[1];
+                        
+                        // Use GitHub API
+                        const apiUrl = `https://api.github.com/repos/${owner}/${repo}`;
+                        const response = await fetch(apiUrl);
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            const pathSuffix = pathParts.length > 2 ? ` - ${pathParts.slice(2).join('/')}` : '';
+                            
+                            return {
+                                title: `${data.name}${pathSuffix} - GitHub`,
+                                description: data.description || `Repository by ${data.owner.login}`,
+                                thumbnail: data.owner.avatar_url,
+                                domain: 'github.com',
+                                success: true,
+                                extra: {
+                                    stars: data.stargazers_count,
+                                    language: data.language
+                                }
+                            };
+                        }
+                    }
+                    throw new Error('GitHub API failed');
+                } catch (error) {
+                    return this.getFallbackMetadata(url, 'GitHub metadata extraction failed');
+                }
+            }
+
+            async extractRedditMetadata(url) {
+                try {
+                    // Try Reddit JSON API
+                    const jsonUrl = url.replace(/\/$/, '') + '.json';
+                    const response = await fetch(jsonUrl);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data && data[0] && data[0].data && data[0].data.children[0]) {
+                            const post = data[0].data.children[0].data;
+                            return {
+                                title: `${post.title} : r/${post.subreddit}`,
+                                description: `r/${post.subreddit} • ${post.score} upvotes • ${post.num_comments} comments`,
+                                thumbnail: post.thumbnail && !['self', 'default', 'nsfw'].includes(post.thumbnail) ? post.thumbnail : null,
+                                domain: 'reddit.com',
+                                success: true
+                            };
+                        }
+                    }
+                    throw new Error('Reddit JSON API failed');
+                } catch (error) {
+                    return this.getFallbackMetadata(url, 'Reddit metadata extraction failed');
+                }
+            }
+
+            extractTwitterMetadata(url) {
+                // Twitter/X blocks most automated requests
+                return {
+                    title: 'X/Twitter Post',
+                    description: 'Content from X/Twitter (requires manual access)',
+                    thumbnail: 'https://abs.twimg.com/favicons/twitter.3.ico',
+                    domain: url.includes('x.com') ? 'x.com' : 'twitter.com',
+                    success: true,
+                    note: 'Twitter/X content requires browser access due to platform restrictions'
+                };
+            }
+
+            async extractGenericMetadata(url) {
+                try {
+                    // For generic URLs, we can only provide basic info
+                    const urlObj = new URL(url);
+                    const domain = urlObj.hostname.replace('www.', '');
+                    
+                    return {
+                        title: domain.charAt(0).toUpperCase() + domain.slice(1),
+                        description: `Content from ${domain}`,
+                        thumbnail: `https://www.google.com/s2/favicons?domain=${domain}&sz=64`,
+                        domain: domain,
+                        success: true,
+                        note: 'Limited metadata available due to CORS restrictions'
+                    };
+                } catch (error) {
+                    return this.getFallbackMetadata(url, 'Generic extraction failed');
+                }
+            }
+
+            getFallbackMetadata(url, error) {
+                try {
+                    const urlObj = new URL(url);
+                    const domain = urlObj.hostname.replace('www.', '');
+                    
+                    return {
+                        title: domain,
+                        description: `Unable to extract metadata: ${error}`,
+                        thumbnail: `https://www.google.com/s2/favicons?domain=${domain}&sz=64`,
+                        domain: domain,
+                        success: false,
+                        error: error
+                    };
+                } catch {
+                    return {
+                        title: 'Invalid URL',
+                        description: 'Please provide a valid URL',
+                        thumbnail: null,
+                        domain: 'unknown',
+                        success: false,
+                        error: 'Invalid URL format'
+                    };
+                }
+            }
+
+            extractYouTubeVideoId(url) {
+                const patterns = [
+                    /(?:v=|\/)([0-9A-Za-z_-]{11}).*/,
+                    /(?:embed\/)([0-9A-Za-z_-]{11})/,
+                    /(?:watch\?v=)([0-9A-Za-z_-]{11})/
+                ];
+                
+                for (const pattern of patterns) {
+                    const match = url.match(pattern);
+                    if (match) return match[1];
+                }
+                return null;
+            }
+        }
+
+        const extractor = new SimpleUrlExtractor();
+
+        async function extractMetadata() {
+            const urlInput = document.getElementById('urlInput');
+            const resultsDiv = document.getElementById('results');
+            const url = urlInput.value.trim();
+
+            if (!url) {
+                showError('Please enter a URL');
+                return;
+            }
+
+            // Show loading
+            resultsDiv.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Extracting metadata...</p>
+                </div>
+            `;
+
+            try {
+                const metadata = await extractor.extractMetadata(url);
+                displayResult(metadata, url);
+            } catch (error) {
+                showError(`Extraction failed: ${error.message}`);
+            }
+        }
+
+        function displayResult(metadata, url) {
+            const resultsDiv = document.getElementById('results');
+            const markdown = `[${metadata.title}](${url})`;
+            
+            const thumbnailHtml = metadata.thumbnail 
+                ? `<img src="${metadata.thumbnail}" alt="Thumbnail" class="result-thumbnail" onerror="this.style.display='none'">`
+                : '';
+
+            const extraInfo = metadata.extra 
+                ? `<p><strong>⭐ Stars:</strong> ${metadata.extra.stars || 'N/A'} | <strong>💻 Language:</strong> ${metadata.extra.language || 'N/A'}</p>`
+                : '';
+
+            const noteHtml = metadata.note 
+                ? `<div class="note"><strong>📝 Note:</strong> ${metadata.note}</div>`
+                : '';
+
+            resultsDiv.innerHTML = `
+                <div class="result-card">
+                    ${thumbnailHtml}
+                    <div class="result-title">${metadata.title}</div>
+                    <div class="result-meta">
+                        <strong>🌐 Domain:</strong> ${metadata.domain}<br>
+                        <strong>📝 Description:</strong> ${metadata.description}
+                    </div>
+                    ${extraInfo}
+                    ${noteHtml}
+                    <div class="markdown-output">
+                        <strong>📋 Markdown Link:</strong><br>
+                        ${markdown}
+                        <button class="copy-btn" onclick="copyToClipboard('${markdown.replace(/'/g, "\\'")}')">📋 Copy</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showError(message) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `<div class="error"><strong>❌ Error:</strong> ${message}</div>`;
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('urlInput').value = '';
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                // Show temporary feedback
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Copied!';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            }).catch(() => {
+                alert('Failed to copy to clipboard');
+            });
+        }
+
+        // Allow Enter key to trigger extraction
+        document.getElementById('urlInput').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                extractMetadata();
+            }
+        });
+
+        // Test URLs for quick testing
+        const testUrls = [
+            'https://github.com/Paranjayy/my-notes-public',
+            'https://www.youtube.com/watch?v=xgmTC0YqCho',
+            'https://www.reddit.com/r/RCB/comments/1kwuj95/we_kohlified_into_qualifier1/',
+            'https://x.com/gdb',
+            'https://paranjayy.github.io/my-notes-public/Markdown-Tips-and-Tricks'
+        ];
+
+        console.log('🔗 Simple URL Extractor loaded');
+        console.log('📋 Test URLs:', testUrls);
+    </script>
+</body>
+</html> 
