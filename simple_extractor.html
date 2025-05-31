@@ -328,8 +328,8 @@
 
         .bulk-result {
             background: #f8f9fa;
-            border-radius: 8px;
-            padding: 15px;
+            border-radius: 10px;
+            padding: 20px;
             margin: 10px 0;
             border-left: 4px solid #667eea;
         }
@@ -351,12 +351,122 @@
             flex-wrap: wrap;
         }
 
-        .main-content {
-            padding: 0;
+        /* Compact Results Layout */
+        .bulk-result-compact {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 15px;
+            align-items: center;
+            padding: 12px 15px;
+            margin: 5px 0;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
         }
 
-        .tab-content {
-            padding: 30px;
+        .bulk-result-compact.success {
+            border-left-color: #48bb78;
+            background: #c6f6d5;
+        }
+
+        .bulk-result-compact.error {
+            border-left-color: #e53e3e;
+            background: #fed7d7;
+        }
+
+        .result-status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .result-status-badge.success {
+            background: #10b981;
+            color: white;
+        }
+
+        .result-status-badge.error {
+            background: #ef4444;
+            color: white;
+        }
+
+        .result-content {
+            min-width: 0; /* Allow text truncation */
+        }
+
+        .result-title {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .result-url {
+            font-size: 12px;
+            color: #6b7280;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 5px;
+            flex-shrink: 0;
+        }
+
+        .btn-mini {
+            padding: 4px 8px;
+            font-size: 11px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-mini.primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-mini.secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-mini:hover {
+            transform: translateY(-1px);
+            opacity: 0.9;
+        }
+
+        /* Toggle for layout modes */
+        .layout-toggle {
+            margin: 15px 0;
+            text-align: right;
+        }
+
+        .layout-toggle button {
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+
+        .layout-toggle button.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        .main-content {
+            padding: 0;
         }
     </style>
 </head>
@@ -450,6 +560,13 @@
                     <button class="btn btn-primary" onclick="copyAllResults()">📋 Copy All</button>
                     <button class="btn btn-secondary" onclick="downloadAllAsText()">📄 Download TXT</button>
                     <button class="btn btn-secondary" onclick="downloadAllAsCSV()">📊 Download CSV</button>
+                </div>
+
+                <!-- Layout Toggle -->
+                <div class="layout-toggle" id="layoutToggle" style="display: none;">
+                    <label style="font-size: 12px; color: #6b7280; margin-right: 10px;">Layout:</label>
+                    <button class="active" onclick="setLayout('compact')">📊 Compact</button>
+                    <button onclick="setLayout('detailed')">📋 Detailed</button>
                 </div>
 
                 <div id="bulkResults"></div>
@@ -868,35 +985,10 @@
         }
 
         function addBulkResult(url, metadata, status) {
-            const resultsDiv = document.getElementById('bulkResults');
-            const resultDiv = document.createElement('div');
-            resultDiv.className = `bulk-result ${status}`;
-
-            const markdown = `[${metadata.title}](${url})`;
-            const thumbnailHtml = metadata.thumbnail 
-                ? `<img src="${metadata.thumbnail}" alt="Thumbnail" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px; float: right; margin-left: 10px;" onerror="this.style.display='none'">`
-                : '';
-
-            if (status === 'success') {
-                resultDiv.innerHTML = `
-                    ${thumbnailHtml}
-                    <div>
-                        <strong>✅ ${metadata.title}</strong><br>
-                        <small>🌐 ${metadata.domain} | ${metadata.description.substring(0, 80)}...</small><br>
-                        <code>${markdown}</code>
-                        <button class="copy-btn" onclick="copyToClipboard('${markdown.replace(/'/g, "\\'")}')">📋 Copy</button>
-                    </div>
-                `;
-            } else {
-                resultDiv.innerHTML = `
-                    <div>
-                        <strong>❌ ${url}</strong><br>
-                        <small>Error: ${metadata.description || metadata.error || 'Unknown error'}</small>
-                    </div>
-                `;
-            }
-
-            resultsDiv.appendChild(resultDiv);
+            addBulkResultWithLayout(url, metadata, status);
+            
+            // Show layout toggle after first result
+            document.getElementById('layoutToggle').style.display = 'block';
         }
 
         function updateBulkStats() {
@@ -1059,6 +1151,104 @@
             document.getElementById('extractedUrls').style.display = 'none';
             document.getElementById('extractResults').innerHTML = '';
             window.currentExtractedUrls = null;
+        }
+
+        // Layout Management
+        let currentLayout = 'compact';
+
+        function setLayout(layout) {
+            currentLayout = layout;
+            
+            // Update toggle buttons
+            document.querySelectorAll('.layout-toggle button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Re-render existing results
+            rerenderBulkResults();
+        }
+
+        function rerenderBulkResults() {
+            const resultsDiv = document.getElementById('bulkResults');
+            resultsDiv.innerHTML = '';
+            
+            // Re-add all results with current layout
+            allExtractedResults.forEach(result => {
+                addBulkResultWithLayout(result.url, result.metadata, result.success ? 'success' : 'error');
+            });
+        }
+
+        function addBulkResultWithLayout(url, metadata, status) {
+            const resultsDiv = document.getElementById('bulkResults');
+            const resultDiv = document.createElement('div');
+            
+            if (currentLayout === 'compact') {
+                resultDiv.className = `bulk-result-compact ${status}`;
+                
+                const markdown = `[${metadata.title}](${url})`;
+                const statusBadge = status === 'success' ? '✅ Success' : '❌ Failed';
+                
+                if (status === 'success') {
+                    resultDiv.innerHTML = `
+                        <div class="result-status-badge ${status}">${statusBadge}</div>
+                        <div class="result-content">
+                            <div class="result-title">${metadata.title}</div>
+                            <div class="result-url">${url}</div>
+                        </div>
+                        <div class="result-actions">
+                            <button class="btn-mini primary" onclick="copyToClipboard('${markdown.replace(/'/g, "\\'")}')">📋</button>
+                            <button class="btn-mini secondary" onclick="window.open('${url}', '_blank')">🔗</button>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result-status-badge ${status}">${statusBadge}</div>
+                        <div class="result-content">
+                            <div class="result-title">${metadata.title || 'Failed'}</div>
+                            <div class="result-url" style="color: #dc2626;">${metadata.description || metadata.error || 'Unknown error'}</div>
+                        </div>
+                        <div class="result-actions">
+                            <button class="btn-mini secondary" onclick="retryUrl('${url}')">🔄</button>
+                        </div>
+                    `;
+                }
+            } else {
+                // Detailed layout (original)
+                resultDiv.className = `bulk-result ${status}`;
+                const markdown = `[${metadata.title}](${url})`;
+                const thumbnailHtml = metadata.thumbnail 
+                    ? `<img src="${metadata.thumbnail}" alt="Thumbnail" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px; float: right; margin-left: 10px;" onerror="this.style.display='none'">`
+                    : '';
+
+                if (status === 'success') {
+                    resultDiv.innerHTML = `
+                        ${thumbnailHtml}
+                        <div>
+                            <strong>✅ ${metadata.title}</strong><br>
+                            <small>🌐 ${metadata.domain} | ${metadata.description.substring(0, 80)}...</small><br>
+                            <code>${markdown}</code>
+                            <button class="copy-btn" onclick="copyToClipboard('${markdown.replace(/'/g, "\\'")}')">📋 Copy</button>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div>
+                            <strong>❌ ${url}</strong><br>
+                            <small>Error: ${metadata.description || metadata.error || 'Unknown error'}</small>
+                        </div>
+                    `;
+                }
+            }
+
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        function retryUrl(url) {
+            // Switch to single URL tab and retry
+            switchTab('single');
+            document.getElementById('urlInput').value = url;
+            setTimeout(() => extractMetadata(), 500);
         }
 
         console.log('🔗 Simple URL Extractor loaded');

@@ -2385,17 +2385,56 @@ Transcript:
             saveSettings();
         }
 
-        function checkBackendStatus() {
-            fetch(`${BACKEND_API_BASE}/health`)
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('apiStatus').className = 'api-status connected';
-                    document.getElementById('apiStatus').textContent = '✅ Connected';
-                })
-                .catch(error => {
-                    document.getElementById('apiStatus').className = 'api-status disconnected';
-                    document.getElementById('apiStatus').textContent = '❌ Disconnected';
+        async function checkBackendStatus() {
+            const statusIndicator = document.getElementById('statusIndicator');
+            
+            try {
+                console.log('🔗 Testing backend connectivity...');
+                
+                // Create manual timeout for better browser compatibility
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                const response = await fetch(`${BACKEND_API_BASE}/health`, { 
+                    signal: controller.signal
                 });
+                
+                clearTimeout(timeoutId);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ Backend is healthy:', data);
+                    statusIndicator.style.background = '#10b981';
+                    statusIndicator.innerHTML = '✅ Backend Connected';
+                    window.isBackendConnected = true;
+                    return true;
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                console.warn('⚠️ Backend connectivity issues:', error);
+                statusIndicator.style.background = '#ef4444';
+                statusIndicator.innerHTML = '❌ Backend Offline';
+                window.isBackendConnected = false;
+                
+                // Show helpful message
+                setTimeout(() => {
+                    const backendDiv = document.getElementById('backendStatus');
+                    if (backendDiv && !backendDiv.querySelector('.error-details')) {
+                        const alertMsg = `
+                            <div class="error-details" style="margin-top: 10px; padding: 10px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; color: #dc2626; font-size: 12px;">
+                                <strong>Backend Connection Failed:</strong><br>
+                                • YouTube transcript extraction disabled<br>
+                                • URL conversion may have limited functionality<br>
+                                • Try the <a href="/simple_extractor.html" style="color: #dc2626;">Simple URL Extractor</a> for basic functionality
+                            </div>
+                        `;
+                        backendDiv.innerHTML += alertMsg;
+                    }
+                }, 1000);
+                
+                return false;
+            }
         }
 
         function exportSettings() {
