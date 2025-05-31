@@ -381,7 +381,7 @@
             align-items: center;
             margin-bottom: 16px;
             padding-bottom: 12px;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .transcript-paragraphs {
@@ -390,44 +390,48 @@
 
         .transcript-paragraph {
             margin-bottom: 12px;
-            border: 1px solid #e0e0e0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 8px;
             overflow: hidden;
+            background: var(--card-bg);
         }
 
         .paragraph-header {
             padding: 12px 16px;
-            background: #f5f5f5;
+            background: var(--card-bg-light);
             cursor: pointer;
             display: flex;
             align-items: center;
             gap: 8px;
             transition: background-color 0.2s;
+            color: var(--text-primary);
         }
 
         .paragraph-header:hover {
-            background: #e8e8e8;
+            background: rgba(59, 130, 246, 0.1);
         }
 
         .paragraph-toggle {
             font-size: 14px;
             min-width: 20px;
+            color: var(--text-primary);
         }
 
         .paragraph-preview {
             flex: 1;
-            color: #333;
+            color: var(--text-primary);
             font-weight: 500;
         }
 
         .paragraph-count {
-            color: #666;
+            color: var(--text-secondary);
             font-size: 0.85rem;
         }
 
         .paragraph-content {
             padding: 12px 16px;
-            background: white;
+            background: var(--card-bg);
+            color: var(--text-primary);
         }
 
         .clickable-timestamp {
@@ -449,6 +453,7 @@
         .transcript-text {
             margin-left: 8px;
             line-height: 1.6;
+            color: var(--text-primary);
         }
 
         .transcript-line {
@@ -456,12 +461,13 @@
             line-height: 1.6;
             display: flex;
             align-items: flex-start;
+            color: var(--text-primary);
         }
 
         .progress-bar {
             width: 100%;
             height: 8px;
-            background: var(--light);
+            background: rgba(255, 255, 255, 0.1);
             border-radius: 4px;
             overflow: hidden;
             margin: 16px 0;
@@ -476,9 +482,11 @@
         .bulk-result {
             padding: 16px;
             border-left: 4px solid var(--success);
-            background: #f8f9fa;
+            background: var(--card-bg-light);
             margin: 8px 0;
             border-radius: 0 8px 8px 0;
+            color: var(--text-primary);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .bulk-result.error {
@@ -493,15 +501,13 @@
         }
 
         .single-line-view {
-            background: linear-gradient(145deg, #f8f9ff 0%, #e8f4fd 100%);
+            background: var(--card-bg-light);
             padding: 20px;
             border-radius: 12px;
             font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
             font-size: 14px;
-            line-height: 1.8;
-            border: 1px solid #e1e5e9;
-            max-height: 400px;
-            overflow-y: auto;
+            color: var(--text-primary);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .single-line-view .transcript-line {
@@ -516,18 +522,19 @@
         }
 
         .stitched-paragraph {
-            background: linear-gradient(145deg, #fafbff 0%, #f0f4f8 100%);
-            border: 1px solid #e2e8f0;
+            background: var(--card-bg-light);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 16px;
             line-height: 1.8;
             font-size: 15px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            color: var(--text-primary);
         }
 
         .stitched-paragraph:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             transform: translateY(-1px);
             transition: all 0.2s ease;
         }
@@ -540,45 +547,47 @@
         }
 
         .setting-item {
-            background: linear-gradient(145deg, #f8fafc, #e2e8f0);
+            background: var(--card-bg-light);
             border-radius: 12px;
             padding: 20px;
-            border: 1px solid #cbd5e1;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .setting-item h4 {
             margin-bottom: 12px;
-            color: var(--dark);
+            color: var(--text-primary);
             font-size: 16px;
         }
 
         .setting-item p {
             font-size: 14px;
-            color: #64748b;
+            color: var(--text-secondary);
             margin-bottom: 12px;
         }
 
         .download-history-item {
-            background: linear-gradient(145deg, #ffffff, #f8fafc);
-            border: 1px solid #e2e8f0;
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 12px;
             padding: 16px;
             margin-bottom: 12px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            color: var(--text-primary);
         }
 
         .download-history-item:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             transform: translateY(-1px);
             transition: all 0.2s ease;
         }
 
         .url-toggle-container {
-            background: linear-gradient(145deg, #f1f5f9, #e2e8f0);
+            background: var(--card-bg-light);
             border-radius: 8px;
             padding: 12px;
             margin-bottom: 16px;
-            border: 1px solid #cbd5e1;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
         }
 
         .toggle-switch {
@@ -602,7 +611,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: linear-gradient(145deg, #cbd5e1, #94a3b8);
+            background: linear-gradient(145deg, #4b5563, #374151);
             transition: 0.4s;
             border-radius: 34px;
         }
@@ -614,10 +623,10 @@
             width: 26px;
             left: 4px;
             bottom: 4px;
-            background: white;
+            background: var(--text-primary);
             transition: 0.4s;
             border-radius: 50%;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
 
         input:checked + .slider {
@@ -648,12 +657,13 @@
         }
 
         .rate-limit-info {
-            background: linear-gradient(145deg, #fef3c7, #fde68a);
-            border: 1px solid #f59e0b;
+            background: rgba(251, 188, 4, 0.15);
+            border: 1px solid rgba(251, 188, 4, 0.3);
             border-radius: 8px;
             padding: 12px;
             margin-bottom: 16px;
             font-size: 14px;
+            color: #fbbf24;
         }
 
         @media (max-width: 768px) {
@@ -664,16 +674,16 @@
         }
 
         .filter-controls {
-            background: linear-gradient(145deg, #f8fafc, #e2e8f0);
+            background: var(--card-bg-light);
             border-radius: 12px;
             padding: 16px;
-            border: 1px solid #cbd5e1;
+            border: 1px solid rgba(255, 255, 255, 0.1);
             margin: 16px 0;
         }
 
         .filter-controls h4 {
             margin-bottom: 12px;
-            color: var(--dark);
+            color: var(--text-primary);
         }
 
         .filter-controls button {
@@ -683,7 +693,7 @@
 
         .bulk-result.duplicate {
             border-left-color: var(--warning);
-            background: #fff8e1;
+            background: rgba(251, 188, 4, 0.15);
         }
 
         .video-actions {

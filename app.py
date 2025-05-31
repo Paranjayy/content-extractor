@@ -443,8 +443,12 @@ class UrlMetadataExtractor:
                 if data and len(data) > 0 and 'data' in data[0]:
                     post_data = data[0]['data']['children'][0]['data']
                     
-                    title = post_data.get('title', 'Reddit Post')
-                    description = post_data.get('selftext', '')[:200] + '...' if post_data.get('selftext') else f"r/{post_data.get('subreddit', 'unknown')} • {post_data.get('score', 0)} upvotes"
+                    # Format title as [title : r/subreddit](url)
+                    raw_title = post_data.get('title', 'Reddit Post')
+                    subreddit = post_data.get('subreddit', 'unknown')
+                    title = f"{raw_title} : r/{subreddit}"
+                    
+                    description = post_data.get('selftext', '')[:200] + '...' if post_data.get('selftext') else f"r/{subreddit} • {post_data.get('score', 0)} upvotes"
                     thumbnail = post_data.get('thumbnail') if post_data.get('thumbnail') not in ['self', 'default', ''] else None
                     
                     return {
