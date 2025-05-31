@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend URL Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; }
+        button { padding: 10px 20px; margin: 10px 0; cursor: pointer; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Frontend URL Debug Test</h1>
+    <p>This page tests URL extraction directly without any cache or UI interference.</p>
+    
+    <button onclick="testAllUrls()">🧪 Test All URLs</button>
+    <button onclick="clearResults()">🗑️ Clear Results</button>
+    
+    <div id="results"></div>
+
+    <script>
+        const BACKEND_API_BASE = 'http://localhost:5002/api';
+        const TEST_URLS = [
+            'https://x.com/gdb',
+            'https://www.reddit.com/r/RCB/comments/1kwuj95/we_kohlified_into_qualifier1/',
+            'https://www.youtube.com/watch?v=xgmTC0YqCho',
+            'https://github.com/Paranjayy/my-notes-public',
+            'https://paranjayy.github.io/my-notes-public/Markdown-Tips-and-Tricks'
+        ];
+
+        async function testUrl(url) {
+            const resultDiv = document.createElement('div');
+            resultDiv.innerHTML = `<strong>🔍 Testing:</strong> ${url}`;
+            document.getElementById('results').appendChild(resultDiv);
+
+            try {
+                console.log(`🔍 Fetching metadata for: ${url}`);
+                const response = await fetch(`${BACKEND_API_BASE}/extract-url-metadata`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        url: url,
+                        includeDescription: true,
+                        includeOgData: true
+                    })
+                });
+
+                console.log(`📡 Backend response status: ${response.status}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('📊 Backend response data:', data);
+                    
+                    // Check if the backend reported success
+                    if (data.success) {
+                        console.log('✅ Backend extraction successful');
+                        
+                        resultDiv.className = 'test-result success';
+                        resultDiv.innerHTML = `
+                            <strong>✅ SUCCESS:</strong> ${url}<br>
+                            <strong>Title:</strong> ${data.title}<br>
+                            <strong>Description:</strong> ${(data.description || 'No description').substring(0, 100)}...<br>
+                            <strong>Domain:</strong> ${data.domain}<br>
+                            <strong>Thumbnail:</strong> ${data.thumbnail ? 'Yes' : 'No'}<br>
+                            <strong>Markdown:</strong> <code>[${data.title}](${url})</code>
+                        `;
+                        return true;
+                    } else {
+                        // Backend returned an error but with 200 status
+                        console.log('⚠️ Backend returned error:', data.error);
+                        
+                        resultDiv.className = 'test-result error';
+                        resultDiv.innerHTML = `
+                            <strong>❌ FAILED:</strong> ${url}<br>
+                            <strong>Error:</strong> ${data.error}
+                        `;
+                        return false;
+                    }
+                } else {
+                    const errorText = await response.text();
+                    console.log('❌ Backend HTTP error:', response.status, errorText);
+                    
+                    resultDiv.className = 'test-result error';
+                    resultDiv.innerHTML = `
+                        <strong>❌ HTTP ERROR:</strong> ${url}<br>
+                        <strong>Status:</strong> ${response.status}<br>
+                        <strong>Response:</strong> ${errorText.substring(0, 200)}...
+                    `;
+                    return false;
+                }
+            } catch (error) {
+                console.log('❌ Frontend error:', error);
+                
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `
+                    <strong>❌ FRONTEND ERROR:</strong> ${url}<br>
+                    <strong>Error:</strong> ${error.message}
+                `;
+                return false;
+            }
+        }
+
+        async function testAllUrls() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<h2>🧪 Running Tests...</h2>';
+            
+            let passed = 0;
+            
+            for (const url of TEST_URLS) {
+                const success = await testUrl(url);
+                if (success) passed++;
+                
+                // Small delay between requests
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            
+            // Add summary
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = 'test-result ' + (passed === TEST_URLS.length ? 'success' : 'error');
+            summaryDiv.innerHTML = `
+                <h3>📊 Test Summary</h3>
+                <strong>Results:</strong> ${passed}/${TEST_URLS.length} URLs successful<br>
+                ${passed === TEST_URLS.length ? 
+                    '🎉 <strong>All tests passed!</strong> Backend and frontend are working correctly.' :
+                    '⚠️ <strong>Some tests failed.</strong> Check console for details.'
+                }
+            `;
+            
+            resultsDiv.appendChild(summaryDiv);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // Show console logs in page
+        window.addEventListener('load', () => {
+            console.log('🔧 Frontend Debug Test Page Loaded');
+            console.log('📡 Backend API Base:', BACKEND_API_BASE);
+            console.log('🔗 Test URLs:', TEST_URLS);
+        });
+    </script>
+</body>
+</html> 

@@ -562,7 +562,7 @@ class UrlMetadataExtractor:
                         
                         return {
                             'title': title,
-                            'description': description,
+                            'description': description if include_description else '',
                             'thumbnail': repo_data['owner']['avatar_url'],
                             'domain': 'github.com',
                             'og_data': {
@@ -586,7 +586,7 @@ class UrlMetadataExtractor:
                         
                         return {
                             'title': title,
-                            'description': description,
+                            'description': description if include_description else '',
                             'thumbnail': repo_data['owner']['avatar_url'],
                             'domain': 'github.com',
                             'og_data': {
