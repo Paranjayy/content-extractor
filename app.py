@@ -548,7 +548,7 @@ class UrlMetadataExtractor:
         """Extract GitHub repository metadata with API fallback"""
         try:
             # Try GitHub API for repositories
-            if '/tree/' in url or '/blob/' in url:
+            if '/tree/' in url or '/blob/' in url or '/releases/' in url or '/issues/' in url:
                 # For file/tree URLs, extract repo info
                 parts = url.replace('https://github.com/', '').split('/')
                 if len(parts) >= 2:
@@ -558,6 +558,30 @@ class UrlMetadataExtractor:
                     if response.status_code == 200:
                         repo_data = response.json()
                         title = f"{repo_data['name']} - {repo_data['full_name']}"
+                        description = repo_data.get('description', '') if include_description else ''
+                        
+                        return {
+                            'title': title,
+                            'description': description,
+                            'thumbnail': repo_data['owner']['avatar_url'],
+                            'domain': 'github.com',
+                            'og_data': {
+                                'stars': repo_data.get('stargazers_count'),
+                                'forks': repo_data.get('forks_count'),
+                                'language': repo_data.get('language'),
+                                'owner': repo_data['owner']['login']
+                            } if include_og_data else {}
+                        }
+            elif '/repos/' in url or url.count('/') == 4:  # Direct repo URL
+                # Extract owner/repo from direct repo URL
+                parts = url.replace('https://github.com/', '').rstrip('/').split('/')
+                if len(parts) >= 2:
+                    api_url = f"https://api.github.com/repos/{parts[0]}/{parts[1]}"
+                    response = self.session.get(api_url, timeout=10)
+                    
+                    if response.status_code == 200:
+                        repo_data = response.json()
+                        title = f"GitHub - {repo_data['full_name']}"
                         description = repo_data.get('description', '') if include_description else ''
                         
                         return {
@@ -720,25 +744,45 @@ def extract_url_metadata():
         
         # Validate URL format
         if not url.startswith(('http://', 'https://')):
-            return jsonify({'error': 'URL must start with http:// or https://'}), 400
+            url = 'https://' + url
         
         include_description = data.get('includeDescription', True)
         include_og_data = data.get('includeOgData', True)
         
+        print(f"🔍 Extracting metadata for: {url}")
+        
         # Extract metadata
         metadata = url_extractor.extract_metadata(url, include_description, include_og_data)
         
+        # Check if extraction was successful
+        if metadata.get('error'):
+            print(f"⚠️  Metadata extraction had issues: {metadata['error']}")
+            return jsonify({
+                'success': False,
+                'url': url,
+                'title': metadata['title'],
+                'description': metadata['description'],
+                'domain': metadata['domain'],
+                'thumbnail': metadata.get('thumbnail'),
+                'ogData': metadata['og_data'],
+                'error': metadata['error'],
+                'extractedAt': datetime.now().isoformat()
+            }), 200  # Still return 200 but with success: false
+        
+        print(f"✅ Successfully extracted metadata for: {url}")
         return jsonify({
             'success': True,
             'url': url,
             'title': metadata['title'],
             'description': metadata['description'],
             'domain': metadata['domain'],
+            'thumbnail': metadata.get('thumbnail'),
             'ogData': metadata['og_data'],
             'extractedAt': datetime.now().isoformat()
         })
         
     except Exception as e:
+        print(f"❌ Server error extracting metadata: {str(e)}")
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 if __name__ == '__main__':
