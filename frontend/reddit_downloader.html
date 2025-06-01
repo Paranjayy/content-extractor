@@ -367,6 +367,38 @@
                 <strong>🔴 Reddit Content Extractor:</strong> Download Reddit posts with comments, metadata, author info, and images. Supports multiple export formats including Markdown, JSON, and ZIP archives.
             </div>
 
+            <!-- Reddit API Configuration Section -->
+            <div class="api-config-section" style="background: linear-gradient(135deg, #1a472a, #2d5a3d); padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #48cc66;">
+                <h3 style="margin-top: 0; color: #48cc66;">🔑 Reddit API Configuration (Optional)</h3>
+                <p style="margin-bottom: 15px; color: #e1e8ed;">
+                    For higher rate limits and better reliability, configure Reddit API credentials.
+                    <a href="https://www.reddit.com/prefs/apps" target="_blank" style="color: #48cc66;">Get API keys here</a>
+                </p>
+                
+                <div class="api-inputs" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; color: #48cc66;">Client ID:</label>
+                        <input type="text" id="redditClientId" placeholder="Your Reddit app client ID" 
+                               style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #48cc66; background: #0f1419; color: #e1e8ed;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; color: #48cc66;">Client Secret:</label>
+                        <input type="password" id="redditClientSecret" placeholder="Your Reddit app client secret" 
+                               style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #48cc66; background: #0f1419; color: #e1e8ed;">
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button onclick="saveRedditApiConfig()" style="background: #48cc66; color: #0f1419; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">
+                        💾 Save Credentials
+                    </button>
+                    <button onclick="testRedditApiConfig()" style="background: #ff6b35; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">
+                        🧪 Test Connection
+                    </button>
+                    <span id="apiConfigStatus" style="color: #48cc66;"></span>
+                </div>
+            </div>
+
             <div class="input-group">
                 <label for="redditInput">🔗 Enter Reddit URL (post, comment, or subreddit):</label>
                 <input type="url" id="redditInput" class="url-input" placeholder="https://www.reddit.com/r/subreddit/comments/..." />
@@ -482,21 +514,37 @@
                     const urlObj = new URL(url);
                     const isReddit = urlObj.hostname.includes('reddit.com');
                     const hasComments = url.includes('/comments/');
+                    
+                    // Log URL validation for debugging
+                    console.log('🔍 URL Validation:', { 
+                        url, 
+                        hostname: urlObj.hostname, 
+                        isReddit, 
+                        hasComments,
+                        pathname: urlObj.pathname 
+                    });
+                    
                     return isReddit && hasComments;
-                } catch {
+                } catch (error) {
+                    console.error('URL validation error:', error);
                     return false;
                 }
             }
 
             async fetchRedditData(url, options) {
+                // Clean URL - remove query parameters that might interfere
+                const cleanUrl = this.cleanRedditUrl(url);
+                console.log('🧹 Cleaned URL:', cleanUrl);
+                
                 // Rate limiting
                 await this.enforceRateLimit();
                 
                 const strategies = [
-                    () => this.fetchWithJsonApi(url, options),
-                    () => this.fetchWithOldReddit(url, options),
-                    () => this.fetchWithCorsProxy(url, options),
-                    () => this.fetchWithPushshift(url, options) // Backup for deleted content
+                    () => this.fetchWithRedditAPI(cleanUrl, options), // NEW: Official Reddit API
+                    () => this.fetchWithJsonApi(cleanUrl, options),
+                    () => this.fetchWithOldReddit(cleanUrl, options),
+                    () => this.fetchWithCorsProxy(cleanUrl, options),
+                    () => this.fetchWithPushshift(cleanUrl, options)
                 ];
 
                 let lastError = null;
@@ -523,6 +571,18 @@
                 throw new Error(`All fetch strategies failed. Last error: ${lastError?.message || 'Unknown error'}`);
             }
 
+            cleanRedditUrl(url) {
+                try {
+                    const urlObj = new URL(url);
+                    // Remove query parameters that interfere with .json API
+                    const cleanUrl = `${urlObj.protocol}//${urlObj.hostname}${urlObj.pathname}`;
+                    return cleanUrl.replace(/\/$/, ''); // Remove trailing slash
+                } catch (error) {
+                    console.warn('URL cleaning failed, using original:', error);
+                    return url.replace(/\/$/, '');
+                }
+            }
+
             async enforceRateLimit() {
                 const now = Date.now();
                 const timeSinceLastRequest = now - this.lastRequestTime;
@@ -545,6 +605,91 @@
                        Array.isArray(data) && 
                        data.length > 0 && 
                        data[0]?.data?.children?.length > 0;
+            }
+
+            async fetchWithRedditAPI(url, options) {
+                // NEW: Official Reddit API with OAuth (if credentials provided)
+                const redditApiConfig = this.getRedditApiConfig();
+                
+                if (!redditApiConfig.clientId) {
+                    throw new Error('Reddit API credentials not configured');
+                }
+
+                try {
+                    console.log('🔑 Using Reddit OAuth API');
+                    
+                    // Extract post ID from URL for API call
+                    const postId = this.extractPostId(url);
+                    if (!postId) throw new Error('Could not extract post ID');
+
+                    // Get OAuth token if not cached
+                    if (!this.oauthToken || this.isTokenExpired()) {
+                        await this.getRedditOAuthToken(redditApiConfig);
+                    }
+
+                    // Fetch post data
+                    const postResponse = await fetch(`https://oauth.reddit.com/comments/${postId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${this.oauthToken}`,
+                            'User-Agent': redditApiConfig.userAgent
+                        }
+                    });
+
+                    if (!postResponse.ok) {
+                        if (postResponse.status === 401) {
+                            // Token expired, refresh and retry
+                            await this.getRedditOAuthToken(redditApiConfig);
+                            return this.fetchWithRedditAPI(url, options);
+                        }
+                        throw new Error(`Reddit API error: ${postResponse.status}`);
+                    }
+
+                    return await postResponse.json();
+                } catch (error) {
+                    throw new Error(`Reddit OAuth API failed: ${error.message}`);
+                }
+            }
+
+            getRedditApiConfig() {
+                // This will be populated with user-provided credentials
+                return {
+                    clientId: localStorage.getItem('reddit_client_id') || '',
+                    clientSecret: localStorage.getItem('reddit_client_secret') || '',
+                    userAgent: 'RedditDownloader/2.0 by YourUsername',
+                    redirectUri: 'http://localhost:8000'
+                };
+            }
+
+            async getRedditOAuthToken(config) {
+                try {
+                    const auth = btoa(`${config.clientId}:${config.clientSecret}`);
+                    
+                    const response = await fetch('https://www.reddit.com/api/v1/access_token', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Basic ${auth}`,
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'User-Agent': config.userAgent
+                        },
+                        body: 'grant_type=client_credentials'
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`OAuth token request failed: ${response.status}`);
+                    }
+
+                    const tokenData = await response.json();
+                    this.oauthToken = tokenData.access_token;
+                    this.tokenExpiry = Date.now() + (tokenData.expires_in * 1000);
+                    
+                    console.log('✅ Reddit OAuth token obtained');
+                } catch (error) {
+                    throw new Error(`OAuth authentication failed: ${error.message}`);
+                }
+            }
+
+            isTokenExpired() {
+                return !this.tokenExpiry || Date.now() >= this.tokenExpiry;
             }
 
             async fetchWithJsonApi(url, options) {
@@ -982,7 +1127,7 @@
                 <div class="error">
                     <strong>❌ Error:</strong> ${message}
                     <br><br>
-                    <strong>💡 Troubleshooting:</strong>
+                    <strong>Troubleshooting:</strong>
                     <ul style="margin-top: 10px; padding-left: 20px;">
                         <li>Make sure the Reddit URL is valid and accessible</li>
                         <li>Try with a different Reddit post</li>
@@ -1122,7 +1267,149 @@
             }
         });
 
-        console.log('🔴 Reddit Downloader Pro loaded');
+        // Reddit API Configuration Functions
+        function saveRedditApiConfig() {
+            const clientId = document.getElementById('redditClientId').value.trim();
+            const clientSecret = document.getElementById('redditClientSecret').value.trim();
+            const statusElement = document.getElementById('apiConfigStatus');
+            
+            if (clientId && clientSecret) {
+                localStorage.setItem('reddit_client_id', clientId);
+                localStorage.setItem('reddit_client_secret', clientSecret);
+                statusElement.textContent = '✅ Credentials saved';
+                statusElement.style.color = '#48cc66';
+            } else {
+                statusElement.textContent = '❌ Please enter both Client ID and Secret';
+                statusElement.style.color = '#ff6b35';
+            }
+            
+            setTimeout(() => {
+                statusElement.textContent = '';
+            }, 3000);
+        }
+
+        async function testRedditApiConfig() {
+            const statusElement = document.getElementById('apiConfigStatus');
+            statusElement.textContent = '🧪 Testing connection...';
+            statusElement.style.color = '#ffa500';
+            
+            try {
+                const config = redditDownloader.getRedditApiConfig();
+                if (!config.clientId || !config.clientSecret) {
+                    throw new Error('Please save credentials first');
+                }
+                
+                await redditDownloader.getRedditOAuthToken(config);
+                statusElement.textContent = '✅ Connection successful!';
+                statusElement.style.color = '#48cc66';
+            } catch (error) {
+                statusElement.textContent = `❌ Connection failed: ${error.message}`;
+                statusElement.style.color = '#ff6b35';
+            }
+            
+            setTimeout(() => {
+                statusElement.textContent = '';
+            }, 5000);
+        }
+
+        function debugUrl() {
+            const url = document.getElementById('redditInput').value.trim();
+            const resultsDiv = document.getElementById('results');
+            
+            if (!url) {
+                alert('Please enter a URL first');
+                return;
+            }
+            
+            console.log('🔍 Starting URL debug for:', url);
+            
+            // Test URL validation
+            const isValid = redditDownloader.isValidRedditUrl(url);
+            const cleanUrl = redditDownloader.cleanRedditUrl(url);
+            const postId = redditDownloader.extractPostId(url);
+            
+            const debugInfo = {
+                original_url: url,
+                is_valid: isValid,
+                cleaned_url: cleanUrl,
+                post_id: postId,
+                api_config: redditDownloader.getRedditApiConfig(),
+                has_credentials: !!localStorage.getItem('reddit_client_id')
+            };
+            
+            console.log('🔍 URL Debug Results:', debugInfo);
+            
+            resultsDiv.innerHTML = `
+                <div class="result-card" style="background: #1a472a; border: 1px solid #48cc66;">
+                    <div class="result-title">🔍 URL Debug Results</div>
+                    <div style="margin-top: 15px; font-family: monospace; font-size: 14px;">
+                        <strong>Original URL:</strong> ${debugInfo.original_url}<br>
+                        <strong>Valid Reddit URL:</strong> ${debugInfo.is_valid ? '✅ Yes' : '❌ No'}<br>
+                        <strong>Cleaned URL:</strong> ${debugInfo.cleaned_url}<br>
+                        <strong>Post ID:</strong> ${debugInfo.post_id || 'Not found'}<br>
+                        <strong>API Credentials:</strong> ${debugInfo.has_credentials ? '✅ Configured' : '❌ Not configured'}<br>
+                        <strong>Rate Limit Status:</strong> Ready<br>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <button class="btn btn-primary" onclick="testRedditStrategies()">🧪 Test All Strategies</button>
+                        <button class="btn btn-secondary" onclick="clearResults()">Clear</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function testRedditStrategies() {
+            const url = document.getElementById('redditInput').value.trim();
+            const resultsDiv = document.getElementById('results');
+            
+            if (!url) return;
+            
+            const cleanUrl = redditDownloader.cleanRedditUrl(url);
+            const strategies = [
+                { name: 'Reddit OAuth API', func: () => redditDownloader.fetchWithRedditAPI(cleanUrl, {}) },
+                { name: 'Reddit JSON API', func: () => redditDownloader.fetchWithJsonApi(cleanUrl, {}) },
+                { name: 'Old Reddit API', func: () => redditDownloader.fetchWithOldReddit(cleanUrl, {}) },
+                { name: 'CORS Proxy', func: () => redditDownloader.fetchWithCorsProxy(cleanUrl, {}) },
+                { name: 'Pushshift API', func: () => redditDownloader.fetchWithPushshift(cleanUrl, {}) }
+            ];
+            
+            let results = '<div class="result-card" style="background: #1a472a; border: 1px solid #48cc66;">';
+            results += '<div class="result-title">🧪 Strategy Test Results</div>';
+            
+            for (let i = 0; i < strategies.length; i++) {
+                const strategy = strategies[i];
+                results += `<div style="margin: 10px 0; padding: 10px; background: #0f1419; border-radius: 5px;">`;
+                results += `<strong>${strategy.name}:</strong> <span id="strategy-${i}">🔄 Testing...</span></div>`;
+                
+                resultsDiv.innerHTML = results + '</div>';
+                
+                try {
+                    const data = await strategy.func();
+                    const success = redditDownloader.isValidRedditData(data);
+                    document.getElementById(`strategy-${i}`).innerHTML = success ? '✅ Success' : '⚠️ Invalid data';
+                    document.getElementById(`strategy-${i}`).style.color = success ? '#48cc66' : '#ffa500';
+                } catch (error) {
+                    document.getElementById(`strategy-${i}`).innerHTML = `❌ Failed: ${error.message}`;
+                    document.getElementById(`strategy-${i}`).style.color = '#ff6b35';
+                }
+            }
+        }
+
+        // Load saved credentials on page load
+        window.addEventListener('load', function() {
+            const savedClientId = localStorage.getItem('reddit_client_id');
+            const savedClientSecret = localStorage.getItem('reddit_client_secret');
+            
+            if (savedClientId) document.getElementById('redditClientId').value = savedClientId;
+            if (savedClientSecret) document.getElementById('redditClientSecret').value = savedClientSecret;
+            
+            if (savedClientId && savedClientSecret) {
+                document.getElementById('apiConfigStatus').textContent = '✅ Credentials loaded';
+                document.getElementById('apiConfigStatus').style.color = '#48cc66';
+            }
+        });
+
+        console.log('🔴 Reddit Downloader Pro v2.1 loaded');
     </script>
 </body>
 </html> 
