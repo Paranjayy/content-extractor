@@ -1348,6 +1348,155 @@
 
         console.log('🔗 Simple URL Extractor loaded');
         console.log('📋 Test URLs:', testUrls);
+
+        // Enhanced File Naming System with Custom Templates
+        const titleTemplates = {
+            youtube: '{title} - {channel} - {date}',
+            url: '{domain} - {title} - {date}',
+            reddit: 'reddit_{subreddit}_{title}_{date}',
+            custom: '{title}_{date}'
+        };
+
+        function generateSmartFilename(data, type = 'url', extension = 'md') {
+            const template = titleTemplates[type] || titleTemplates.custom;
+            const date = new Date().toISOString().split('T')[0];
+            const time = new Date().toISOString().split('T')[1].slice(0, 8).replace(/:/g, '-');
+            
+            let filename = template;
+            
+            // Replace template variables
+            const replacements = {
+                '{title}': sanitizeFilename(data.title || data.metadata?.title || 'untitled'),
+                '{channel}': sanitizeFilename(data.channel || data.metadata?.channel || 'unknown'),
+                '{domain}': sanitizeFilename(data.domain || new URL(data.url || '').hostname || 'unknown'),
+                '{subreddit}': sanitizeFilename(data.subreddit || 'unknown'),
+                '{date}': date,
+                '{time}': time,
+                '{datetime}': `${date}_${time}`,
+                '{videoId}': data.videoId || data.id || 'unknown',
+                '{views}': data.views || data.metadata?.views || '0',
+                '{duration}': data.duration || data.metadata?.duration || 'unknown'
+            };
+            
+            // Apply replacements
+            Object.entries(replacements).forEach(([key, value]) => {
+                filename = filename.replace(new RegExp(key.replace(/[{}]/g, '\\$&'), 'g'), value);
+            });
+            
+            // Clean up any remaining template variables
+            filename = filename.replace(/\{[^}]*\}/g, '');
+            
+            // Clean up multiple separators
+            filename = filename.replace(/[-_\s]+/g, '_').replace(/^[-_]+|[-_]+$/g, '');
+            
+            return `${filename}.${extension}`;
+        }
+
+        function sanitizeFilename(str) {
+            if (!str) return 'untitled';
+            return str.toString()
+                     .replace(/[<>:"/\\|?*]/g, '')
+                     .replace(/\s+/g, '_')
+                     .substring(0, 50)
+                     .trim();
+        }
+
+        // Enhanced download functions
+        function downloadSingleResult() {
+            if (!currentResult) {
+                alert('No data to download!');
+                return;
+            }
+            
+            const markdown = `[${currentResult.title}](${currentResult.url})`;
+            const filename = generateSmartFilename(currentResult, 'url', 'md');
+            downloadFile(markdown, filename, 'text/markdown');
+            alert(`Downloaded ${filename}!`);
+        }
+
+        function downloadAllResults() {
+            const successfulResults = allExtractedResults.filter(r => r.success);
+            if (successfulResults.length === 0) {
+                alert('No successful extractions to download!');
+                return;
+            }
+            
+            const markdown = successfulResults.map(result => 
+                `[${result.metadata.title}](${result.url})`
+            ).join('\n');
+            
+            const filename = generateSmartFilename({
+                title: 'url_extractions_bulk',
+                domain: `${successfulResults.length}_urls`
+            }, 'url', 'md');
+            
+            downloadFile(markdown, filename, 'text/markdown');
+            alert(`Downloaded ${successfulResults.length} URLs as ${filename}!`);
+        }
+
+        function downloadAllAsZip() {
+            const successfulResults = allExtractedResults.filter(r => r.success);
+            if (successfulResults.length === 0) {
+                alert('No successful extractions to download!');
+                return;
+            }
+            
+            if (typeof JSZip === 'undefined') {
+                alert('ZIP functionality requires JSZip library');
+                return;
+            }
+            
+            const zip = new JSZip();
+            
+            // Add individual files
+            successfulResults.forEach((result, index) => {
+                const markdown = `[${result.metadata.title}](${result.url})`;
+                const filename = generateSmartFilename({
+                    ...result.metadata,
+                    title: `${index + 1}_${result.metadata.title}`,
+                    url: result.url
+                }, 'url', 'md');
+                zip.file(filename, markdown);
+            });
+            
+            // Add combined file
+            const combinedMarkdown = successfulResults.map(result => 
+                `[${result.metadata.title}](${result.url})`
+            ).join('\n');
+            
+            const combinedFilename = generateSmartFilename({
+                title: 'all_extractions_combined',
+                domain: `${successfulResults.length}_urls`
+            }, 'url', 'md');
+            zip.file(combinedFilename, combinedMarkdown);
+            
+            // Generate and download ZIP
+            zip.generateAsync({ type: 'blob' }).then(function(content) {
+                const url = URL.createObjectURL(content);
+                const a = document.createElement('a');
+                const zipFilename = generateSmartFilename({
+                    title: 'url_extractions_archive',
+                    domain: `${successfulResults.length}_urls`
+                }, 'url', 'zip');
+                a.href = url;
+                a.download = zipFilename;
+                a.click();
+                URL.revokeObjectURL(url);
+                alert(`ZIP archive downloaded as ${zipFilename}!`);
+            });
+        }
+
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
     </script>
 </body>
 </html> 

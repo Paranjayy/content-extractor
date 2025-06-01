@@ -345,6 +345,53 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Tab Styles */
+        .tab-btn {
+            padding: 10px 20px;
+            border: none;
+            background: #f8f9fa;
+            color: #666;
+            cursor: pointer;
+            border-radius: 8px 8px 0 0;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(45deg, #ff4500, #ff6b35);
+            color: white;
+        }
+
+        .tab-btn:hover:not(.active) {
+            background: #e9ecef;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .bulk-result {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #ff4500;
+        }
+
+        .bulk-result.success {
+            border-left-color: #48bb78;
+            background: #c6f6d5;
+        }
+
+        .bulk-result.error {
+            border-left-color: #e53e3e;
+            background: #fed7d7;
+        }
     </style>
 </head>
 <body>
@@ -407,6 +454,73 @@
                 </small>
             </div>
 
+            <!-- Tabs for Single/Bulk -->
+            <div style="display: flex; gap: 10px; margin: 20px 0; border-bottom: 2px solid #e0e0e0;">
+                <button class="tab-btn active" onclick="switchRedditTab('single')">🔗 Single Reddit URL</button>
+                <button class="tab-btn" onclick="switchRedditTab('bulk')">📋 Bulk Reddit URLs</button>
+            </div>
+
+            <!-- Single Reddit Tab -->
+            <div id="singleRedditTab" class="tab-content active">
+                <div class="input-group">
+                    <label for="redditInput">🔗 Enter Reddit URL (post, comment, or subreddit):</label>
+                    <input type="url" id="redditInput" class="url-input" placeholder="https://www.reddit.com/r/subreddit/comments/..." />
+                    <small style="color: #666; margin-top: 5px; display: block;">
+                        💡 Supports: Posts, Comments, User profiles, Subreddits
+                    </small>
+                </div>
+            </div>
+
+            <!-- Bulk Reddit Tab -->
+            <div id="bulkRedditTab" class="tab-content" style="display: none;">
+                <div class="input-group">
+                    <label for="bulkRedditInput">📋 Enter Multiple Reddit URLs (one per line):</label>
+                    <textarea id="bulkRedditInput" class="url-input" rows="8" placeholder="https://www.reddit.com/r/subreddit/comments/example1/&#10;https://www.reddit.com/r/subreddit/comments/example2/&#10;https://www.reddit.com/r/subreddit/comments/example3/"></textarea>
+                    <small style="color: #666; margin-top: 5px; display: block;">
+                        💡 Enter one Reddit URL per line for bulk processing
+                    </small>
+                </div>
+
+                <div class="bulk-options" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                    <h4 style="margin-top: 0;">🔧 Bulk Processing Options:</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="bulkContinueOnError" checked>
+                            <label for="bulkContinueOnError">Continue on errors</label>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="bulkAutoDownload" checked>
+                            <label for="bulkAutoDownload">Auto-download ZIP</label>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="bulkShowProgress" checked>
+                            <label for="bulkShowProgress">Show progress details</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="bulkStats" style="display: none;" class="stats-container">
+                    <div class="stat-item">
+                        <div class="stat-number" id="bulkProcessed">0</div>
+                        <div class="stat-label">Processed</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="bulkSuccessful">0</div>
+                        <div class="stat-label">Successful</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="bulkFailed">0</div>
+                        <div class="stat-label">Failed</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="bulkTotalComments">0</div>
+                        <div class="stat-label">Total Comments</div>
+                    </div>
+                </div>
+
+                <div id="bulkRedditResults" style="margin-top: 20px;"></div>
+            </div>
+
             <div class="input-group">
                 <label>📋 Download Options:</label>
                 <div class="options-grid">
@@ -449,10 +563,11 @@
                 </select>
             </div>
 
-            <div class="btn-group">
-                <button class="btn btn-primary" onclick="downloadRedditContent()">🔴 Download Reddit Content</button>
+            <div id="redditButtons" class="btn-group">
+                <button class="btn btn-primary" onclick="processRedditContent()" id="mainProcessBtn">🔴 Download Reddit Content</button>
                 <button class="btn btn-secondary" onclick="clearResults()">🗑️ Clear Results</button>
                 <button class="btn btn-secondary" onclick="loadSampleUrl()">🧪 Load Sample</button>
+                <button class="btn btn-secondary" onclick="downloadAllBulkRedditAsZip()" id="bulkDownloadBtn" style="display: none;">📦 Download All as ZIP</button>
             </div>
 
             <div class="progress-container" id="progressContainer">
@@ -1036,6 +1151,110 @@
         const redditDownloader = new RedditDownloader();
         let currentRedditData = null;
 
+        // Bulk processing variables
+        let allBulkRedditData = [];
+        let bulkProcessingStats = {
+            processed: 0,
+            successful: 0,
+            failed: 0,
+            totalComments: 0
+        };
+
+        // Enhanced Reddit-specific title templates
+        const redditTitleTemplates = {
+            single: 'reddit_{subreddit}_{title}_{date}',
+            bulk: 'reddit_bulk_{count}_posts_{date}',
+            custom: 'reddit_{title}_{date}'
+        };
+
+        function generateRedditFilename(data, type = 'single', extension = 'md', index = null) {
+            const template = redditTitleTemplates[type] || redditTitleTemplates.custom;
+            const date = new Date().toISOString().split('T')[0];
+            const time = new Date().toISOString().split('T')[1].slice(0, 8).replace(/:/g, '-');
+            
+            let filename = template;
+            
+            // Replace template variables
+            const replacements = {
+                '{title}': sanitizeRedditFilename(data.post?.title || data.title || 'untitled'),
+                '{subreddit}': sanitizeRedditFilename(data.post?.subreddit || data.subreddit || 'unknown'),
+                '{author}': sanitizeRedditFilename(data.post?.author || data.author || 'unknown'),
+                '{date}': date,
+                '{time}': time,
+                '{datetime}': `${date}_${time}`,
+                '{id}': data.post?.id || data.id || 'unknown',
+                '{score}': data.post?.score || data.score || '0',
+                '{comments}': data.comments?.length || '0',
+                '{count}': data.count || allBulkRedditData.length || '0',
+                '{index}': index !== null ? index + 1 : '1'
+            };
+            
+            // Apply replacements
+            Object.entries(replacements).forEach(([key, value]) => {
+                filename = filename.replace(new RegExp(key.replace(/[{}]/g, '\\$&'), 'g'), value);
+            });
+            
+            // Clean up any remaining template variables
+            filename = filename.replace(/\{[^}]*\}/g, '');
+            
+            // Clean up multiple separators
+            filename = filename.replace(/[-_\s]+/g, '_').replace(/^[-_]+|[-_]+$/g, '');
+            
+            return `${filename}.${extension}`;
+        }
+
+        function sanitizeRedditFilename(str) {
+            if (!str) return 'untitled';
+            return str.toString()
+                     .replace(/[<>:"/\\|?*]/g, '')
+                     .replace(/\s+/g, '_')
+                     .substring(0, 50)
+                     .trim();
+        }
+
+        // Tab Management
+        function switchRedditTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+                content.style.display = 'none';
+            });
+            
+            const activeTab = document.getElementById(tabName + 'RedditTab');
+            if (activeTab) {
+                activeTab.classList.add('active');
+                activeTab.style.display = 'block';
+            }
+            
+            // Update button text and functionality
+            const mainBtn = document.getElementById('mainProcessBtn');
+            const bulkBtn = document.getElementById('bulkDownloadBtn');
+            
+            if (tabName === 'bulk') {
+                mainBtn.innerHTML = '🔴 Process Bulk Reddit URLs';
+                bulkBtn.style.display = allBulkRedditData.length > 0 ? 'inline-block' : 'none';
+            } else {
+                mainBtn.innerHTML = '🔴 Download Reddit Content';
+                bulkBtn.style.display = 'none';
+            }
+        }
+
+        // Main processing function that handles both single and bulk
+        async function processRedditContent() {
+            const activeTab = document.querySelector('.tab-content.active').id;
+            
+            if (activeTab === 'bulkRedditTab') {
+                await processBulkRedditUrls();
+            } else {
+                await downloadRedditContent();
+            }
+        }
+
+        // Original single Reddit download function
         async function downloadRedditContent() {
             const url = document.getElementById('redditInput').value.trim();
             const resultsDiv = document.getElementById('results');
@@ -1075,6 +1294,259 @@
                 showError(error.message);
                 progressContainer.style.display = 'none';
             }
+        }
+
+        // New bulk Reddit processing function
+        async function processBulkRedditUrls() {
+            const bulkInput = document.getElementById('bulkRedditInput').value.trim();
+            const resultsDiv = document.getElementById('bulkRedditResults');
+            const progressContainer = document.getElementById('progressContainer');
+            const bulkStats = document.getElementById('bulkStats');
+
+            if (!bulkInput) {
+                showError('Please enter Reddit URLs for bulk processing');
+                return;
+            }
+
+            // Parse URLs
+            const urls = bulkInput.split('\n')
+                                  .map(url => url.trim())
+                                  .filter(url => url.length > 0);
+
+            if (urls.length === 0) {
+                showError('No valid URLs found');
+                return;
+            }
+
+            // Reset stats
+            bulkProcessingStats = {
+                processed: 0,
+                successful: 0,
+                failed: 0,
+                totalComments: 0
+            };
+            allBulkRedditData = [];
+
+            // Get options
+            const options = {
+                includeComments: document.getElementById('includeComments').checked,
+                includeMetadata: document.getElementById('includeMetadata').checked,
+                includeImages: document.getElementById('includeImages').checked,
+                includeAuthor: document.getElementById('includeAuthor').checked,
+                includeTimestamps: document.getElementById('includeTimestamps').checked,
+                includeScores: document.getElementById('includeScores').checked,
+                maxComments: parseInt(document.getElementById('maxComments').value)
+            };
+
+            const bulkOptions = {
+                continueOnError: document.getElementById('bulkContinueOnError').checked,
+                autoDownload: document.getElementById('bulkAutoDownload').checked,
+                showProgress: document.getElementById('bulkShowProgress').checked
+            };
+
+            // Show progress and stats
+            progressContainer.style.display = 'block';
+            bulkStats.style.display = 'grid';
+            resultsDiv.innerHTML = '';
+            document.getElementById('bulkDownloadBtn').style.display = 'none';
+
+            // Process each URL
+            for (let i = 0; i < urls.length; i++) {
+                const url = urls[i];
+                
+                try {
+                    redditDownloader.updateProgress(
+                        Math.round((i / urls.length) * 100), 
+                        `Processing ${i + 1}/${urls.length}: ${url.substring(0, 50)}...`
+                    );
+
+                    const result = await redditDownloader.downloadContent(url, options);
+                    result.bulkIndex = i;
+                    result.bulkUrl = url;
+                    
+                    allBulkRedditData.push(result);
+                    bulkProcessingStats.successful++;
+                    bulkProcessingStats.totalComments += result.comments?.length || 0;
+                    
+                    if (bulkOptions.showProgress) {
+                        displayBulkResult(result, 'success', i + 1);
+                    }
+
+                } catch (error) {
+                    bulkProcessingStats.failed++;
+                    
+                    if (bulkOptions.showProgress) {
+                        displayBulkResult({
+                            original_url: url,
+                            error: error.message,
+                            bulkIndex: i,
+                            bulkUrl: url
+                        }, 'error', i + 1);
+                    }
+
+                    if (!bulkOptions.continueOnError) {
+                        break;
+                    }
+                }
+
+                bulkProcessingStats.processed++;
+                updateBulkStats();
+                
+                // Rate limiting - wait between requests
+                if (i < urls.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
+
+            // Final update
+            redditDownloader.updateProgress(100, `Completed: ${bulkProcessingStats.successful} successful, ${bulkProcessingStats.failed} failed`);
+            
+            // Show download button if we have successful results
+            if (bulkProcessingStats.successful > 0) {
+                document.getElementById('bulkDownloadBtn').style.display = 'inline-block';
+                
+                // Auto-download if option is enabled
+                if (bulkOptions.autoDownload) {
+                    setTimeout(() => downloadAllBulkRedditAsZip(), 2000);
+                }
+            }
+
+            // Hide progress after delay
+            setTimeout(() => {
+                progressContainer.style.display = 'none';
+            }, 3000);
+        }
+
+        function displayBulkResult(result, status, index) {
+            const resultsDiv = document.getElementById('bulkRedditResults');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `bulk-result ${status}`;
+            
+            if (status === 'success') {
+                const title = result.post?.title || 'Unknown Title';
+                const subreddit = result.post?.subreddit || 'unknown';
+                const commentsCount = result.comments?.length || 0;
+                
+                resultDiv.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div style="flex: 1;">
+                            <strong>✅ ${index}. ${title}</strong><br>
+                            <small>📍 r/${subreddit} | 💬 ${commentsCount} comments | 🔗 <a href="${result.original_url}" target="_blank">View Post</a></small>
+                        </div>
+                        <div style="display: flex; gap: 5px;">
+                            <button class="copy-btn" onclick="copyBulkRedditItem(${result.bulkIndex})">📋</button>
+                            <button class="copy-btn" onclick="downloadBulkRedditItem(${result.bulkIndex})">💾</button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <div>
+                        <strong>❌ ${index}. Failed to process</strong><br>
+                        <small>🔗 ${result.bulkUrl}</small><br>
+                        <small style="color: #c53030;">Error: ${result.error}</small>
+                    </div>
+                `;
+            }
+            
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        function updateBulkStats() {
+            document.getElementById('bulkProcessed').textContent = bulkProcessingStats.processed;
+            document.getElementById('bulkSuccessful').textContent = bulkProcessingStats.successful;
+            document.getElementById('bulkFailed').textContent = bulkProcessingStats.failed;
+            document.getElementById('bulkTotalComments').textContent = bulkProcessingStats.totalComments;
+        }
+
+        function copyBulkRedditItem(index) {
+            const result = allBulkRedditData[index];
+            if (result) {
+                const markdown = generateMarkdown(result);
+                navigator.clipboard.writeText(markdown).then(() => {
+                    alert('Reddit content copied to clipboard!');
+                }).catch(() => {
+                    alert('Failed to copy to clipboard');
+                });
+            }
+        }
+
+        function downloadBulkRedditItem(index) {
+            const result = allBulkRedditData[index];
+            if (result) {
+                const markdown = generateMarkdown(result);
+                const filename = generateRedditFilename(result, 'single', 'md', index);
+                downloadFile(markdown, filename, 'text/markdown');
+                alert(`Downloaded ${filename}!`);
+            }
+        }
+
+        async function downloadAllBulkRedditAsZip() {
+            if (allBulkRedditData.length === 0) {
+                alert('No Reddit data to download!');
+                return;
+            }
+            
+            if (typeof JSZip === 'undefined') {
+                alert('ZIP functionality requires JSZip library');
+                return;
+            }
+            
+            const zip = new JSZip();
+            
+            // Add individual files
+            allBulkRedditData.forEach((result, index) => {
+                const markdown = generateMarkdown(result);
+                const filename = generateRedditFilename(result, 'single', 'md', index);
+                zip.file(filename, markdown);
+                
+                // Also add JSON data
+                const jsonFilename = generateRedditFilename(result, 'single', 'json', index);
+                zip.file(jsonFilename, JSON.stringify(result, null, 2));
+            });
+            
+            // Add combined markdown file
+            const combinedMarkdown = allBulkRedditData.map(result => generateMarkdown(result)).join('\n\n========================================\n\n');
+            const combinedFilename = generateRedditFilename({
+                title: 'all_reddit_posts_combined',
+                subreddit: 'bulk',
+                count: allBulkRedditData.length
+            }, 'bulk', 'md');
+            zip.file(combinedFilename, combinedMarkdown);
+            
+            // Add summary JSON
+            const summaryData = {
+                exportedAt: new Date().toISOString(),
+                totalPosts: allBulkRedditData.length,
+                totalComments: bulkProcessingStats.totalComments,
+                stats: bulkProcessingStats,
+                posts: allBulkRedditData
+            };
+            const summaryFilename = generateRedditFilename({
+                title: 'bulk_reddit_summary',
+                subreddit: 'bulk',
+                count: allBulkRedditData.length
+            }, 'bulk', 'json');
+            zip.file(summaryFilename, JSON.stringify(summaryData, null, 2));
+            
+            // Generate and download ZIP
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            const zipFilename = generateRedditFilename({
+                title: 'reddit_bulk_download',
+                subreddit: 'archive',
+                count: allBulkRedditData.length
+            }, 'bulk', 'zip');
+            
+            const url = URL.createObjectURL(zipBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = zipFilename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            alert(`Downloaded ${allBulkRedditData.length} Reddit posts as ${zipFilename}!`);
         }
 
         function displayResult(data) {
@@ -1192,15 +1664,17 @@
             if (!currentRedditData) return;
             
             const markdown = generateMarkdown(currentRedditData);
-            const sanitizedFilename = `reddit_${filename.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.md`;
-            downloadFile(markdown, sanitizedFilename, 'text/markdown');
+            const smartFilename = generateRedditFilename(currentRedditData, 'single', 'md');
+            downloadFile(markdown, smartFilename, 'text/markdown');
+            alert(`Downloaded ${smartFilename}!`);
         }
 
         function downloadJSON(filename) {
             if (!currentRedditData) return;
             
-            const sanitizedFilename = `reddit_${filename.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.json`;
-            downloadFile(JSON.stringify(currentRedditData, null, 2), sanitizedFilename, 'application/json');
+            const smartFilename = generateRedditFilename(currentRedditData, 'single', 'json');
+            downloadFile(JSON.stringify(currentRedditData, null, 2), smartFilename, 'application/json');
+            alert(`Downloaded ${smartFilename}!`);
         }
 
         async function downloadZip(filename) {
@@ -1212,10 +1686,12 @@
             const zip = new JSZip();
             
             // Add markdown file
-            zip.file('reddit_content.md', generateMarkdown(currentRedditData));
+            const markdownFilename = generateRedditFilename(currentRedditData, 'single', 'md');
+            zip.file(markdownFilename, generateMarkdown(currentRedditData));
             
             // Add JSON file
-            zip.file('reddit_data.json', JSON.stringify(currentRedditData, null, 2));
+            const jsonFilename = generateRedditFilename(currentRedditData, 'single', 'json');
+            zip.file(jsonFilename, JSON.stringify(currentRedditData, null, 2));
             
             // Add images info if any
             if (currentRedditData.images.length > 0) {
@@ -1227,14 +1703,15 @@
             
             // Generate and download ZIP
             const zipBlob = await zip.generateAsync({ type: 'blob' });
-            const sanitizedFilename = `reddit_${filename.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.zip`;
+            const zipFilename = generateRedditFilename(currentRedditData, 'single', 'zip');
             
             const url = URL.createObjectURL(zipBlob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = sanitizedFilename;
+            a.download = zipFilename;
             a.click();
             URL.revokeObjectURL(url);
+            alert(`Downloaded ${zipFilename}!`);
         }
 
         function copyToClipboard() {

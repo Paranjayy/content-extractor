@@ -2078,7 +2078,7 @@ Transcript:
 
         function downloadUrlMarkdown() {
             if (!currentUrlData) {
-                showAlert('No URL data to download!', 'error', 'urlError');
+                showAlert('No URL data to download!', 'error');
                 return;
             }
             
@@ -3340,7 +3340,13 @@ Transcript:
                 text = currentVideoData.transcript.map(entry => entry.text).join('\n');
             }
             
-            downloadFile(text, `${currentVideoData.videoId}_transcript.txt`, 'text/plain');
+            const filename = generateSmartFilename({
+                ...currentVideoData,
+                title: `${currentVideoData.metadata.title}_transcript`
+            }, 'youtube', 'txt');
+            
+            downloadFile(text, filename, 'text/plain');
+            showAlert(`Downloaded transcript as ${filename}!`);
         }
 
         function downloadFile(content, filename, mimeType) {
@@ -3380,8 +3386,13 @@ Transcript:
                 ].join(',');
             }).join('\n');
 
-            const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
-            downloadFile(header + csvData, `youtube_transcripts_${timestamp}.csv`, 'text/csv');
+            const filename = generateSmartFilename({
+                title: 'youtube_transcripts_bulk',
+                channel: `${allExtractedData.length}_videos`
+            }, 'youtube', 'csv');
+            
+            downloadFile(header + csvData, filename, 'text/csv');
+            showAlert(`Exported ${allExtractedData.length} transcripts as ${filename}!`);
         }
 
         function exportAllAsJSON() {
@@ -3390,9 +3401,13 @@ Transcript:
                 return;
             }
 
-            const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
-            downloadFile(JSON.stringify(allExtractedData, null, 2), 
-                        `youtube_transcripts_${timestamp}.json`, 'application/json');
+            const filename = generateSmartFilename({
+                title: 'youtube_transcripts_bulk',
+                channel: `${allExtractedData.length}_videos`
+            }, 'youtube', 'json');
+            
+            downloadFile(JSON.stringify(allExtractedData, null, 2), filename, 'application/json');
+            showAlert(`Exported ${allExtractedData.length} transcripts as ${filename}!`);
         }
 
         async function exportAllAsZip() {
@@ -3403,10 +3418,14 @@ Transcript:
 
             const zip = new JSZip();
             
-            // Add individual markdown files
+            // Add individual markdown files with smart names
             allExtractedData.forEach((data, index) => {
                 const markdown = generateMarkdown(data);
-                zip.file(`transcript_${index + 1}_${data.videoId}.md`, markdown);
+                const filename = generateSmartFilename({
+                    ...data,
+                    title: `${index + 1}_${data.metadata.title}`
+                }, 'youtube', 'md');
+                zip.file(filename, markdown);
             });
 
             // Add CSV file
@@ -3429,22 +3448,29 @@ Transcript:
                 ].join(',');
             }).join('\n');
             
-            zip.file('all_transcripts.csv', csvHeader + csvData);
+            const csvFilename = generateSmartFilename({
+                title: 'all_transcripts_summary',
+                channel: `${allExtractedData.length}_videos`
+            }, 'youtube', 'csv');
+            zip.file(csvFilename, csvHeader + csvData);
 
             // Generate and download ZIP
             const zipBlob = await zip.generateAsync({ type: 'blob' });
-            const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+            const zipFilename = generateSmartFilename({
+                title: 'youtube_transcripts_archive',
+                channel: `${allExtractedData.length}_videos`
+            }, 'youtube', 'zip');
             
             const url = URL.createObjectURL(zipBlob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `youtube_transcripts_${timestamp}.zip`;
+            a.download = zipFilename;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             
-            showAlert('ZIP file downloaded successfully!');
+            showAlert(`ZIP archive downloaded as ${zipFilename}!`);
         }
 
         function updateExportStats() {
@@ -4163,8 +4189,9 @@ Transcript:
             const urlData = allExtractedUrls.find(data => data.url === url);
             if (urlData) {
                 const markdown = generateMarkdownLink(urlData);
-                const filename = `${sanitizeFilename(urlData.title)}.md`;
+                const filename = generateSmartFilename(urlData, 'url', 'md');
                 downloadFile(markdown, filename, 'text/markdown');
+                showAlert(`Downloaded ${filename}!`);
             }
         }
 
@@ -4200,32 +4227,34 @@ Transcript:
             
             successfulUrls.forEach((urlData, index) => {
                 const markdown = generateMarkdownLink(urlData);
-                const filename = `${index + 1}_${sanitizeFilename(urlData.title)}.md`;
+                const filename = generateSmartFilename({
+                    ...urlData,
+                    title: `${index + 1}_${urlData.title}`
+                }, 'url', 'md');
                 zip.file(filename, markdown);
             });
             
-            // Add a combined file
+            // Add a combined file with smart naming
             const combinedMarkdown = successfulUrls.map(urlData => generateMarkdownLink(urlData)).join('\n');
-            zip.file('all_links.md', combinedMarkdown);
+            const combinedFilename = generateSmartFilename({
+                title: 'all_links_combined',
+                domain: `${successfulUrls.length}_urls`
+            }, 'url', 'md');
+            zip.file(combinedFilename, combinedMarkdown);
             
             zip.generateAsync({ type: 'blob' }).then(function(content) {
                 const url = URL.createObjectURL(content);
                 const a = document.createElement('a');
+                const zipFilename = generateSmartFilename({
+                    title: 'url_conversions_archive',
+                    domain: `${successfulUrls.length}_urls`
+                }, 'url', 'zip');
                 a.href = url;
-                a.download = `url_conversions_${new Date().toISOString().split('T')[0]}.zip`;
+                a.download = zipFilename;
                 a.click();
                 URL.revokeObjectURL(url);
-                showAlert('ZIP file downloaded!', 'success', 'bulkUrlSuccess');
+                showAlert(`ZIP archive downloaded as ${zipFilename}!`, 'success', 'bulkUrlSuccess');
             });
-        }
-
-        function exportUrlsAsCSV() {
-            if (allExtractedUrls.length === 0) {
-                showAlert('No URL data to export!', 'error', 'bulkUrlError');
-                return;
-            }
-            
-            exportUrlHistoryAsCSV();
         }
 
         function exportUrlsAsJSON() {
@@ -4241,8 +4270,13 @@ Transcript:
                 urls: allExtractedUrls
             };
             
-            const filename = `url_conversions_${new Date().toISOString().split('T')[0]}.json`;
+            const filename = generateSmartFilename({
+                title: 'url_conversions_data',
+                domain: `${allExtractedUrls.length}_urls`
+            }, 'url', 'json');
+            
             downloadFile(JSON.stringify(jsonData, null, 2), filename, 'application/json');
+            showAlert(`Exported ${allExtractedUrls.length} URLs as ${filename}!`);
         }
 
         function filterUrlResults(filterType) {
@@ -4263,6 +4297,298 @@ Transcript:
                     result.style.display = 'none';
                 }
             });
+        }
+
+        // Enhanced File Naming System with Custom Templates
+        const titleTemplates = {
+            youtube: '{title} - {channel} - {date}',
+            url: '{domain} - {title} - {date}',
+            reddit: 'reddit_{subreddit}_{title}_{date}',
+            custom: '{title}_{date}'
+        };
+
+        function generateSmartFilename(data, type = 'youtube', extension = 'md') {
+            const template = titleTemplates[type] || titleTemplates.custom;
+            const date = new Date().toISOString().split('T')[0];
+            const time = new Date().toISOString().split('T')[1].slice(0, 8).replace(/:/g, '-');
+            
+            let filename = template;
+            
+            // Replace template variables
+            const replacements = {
+                '{title}': sanitizeFilename(data.title || data.metadata?.title || 'untitled'),
+                '{channel}': sanitizeFilename(data.channel || data.metadata?.channel || 'unknown'),
+                '{domain}': sanitizeFilename(data.domain || new URL(data.url || '').hostname || 'unknown'),
+                '{subreddit}': sanitizeFilename(data.subreddit || 'unknown'),
+                '{date}': date,
+                '{time}': time,
+                '{datetime}': `${date}_${time}`,
+                '{videoId}': data.videoId || data.id || 'unknown',
+                '{views}': data.views || data.metadata?.views || '0',
+                '{duration}': data.duration || data.metadata?.duration || 'unknown'
+            };
+            
+            // Apply replacements
+            Object.entries(replacements).forEach(([key, value]) => {
+                filename = filename.replace(new RegExp(key.replace(/[{}]/g, '\\$&'), 'g'), value);
+            });
+            
+            // Clean up any remaining template variables
+            filename = filename.replace(/\{[^}]*\}/g, '');
+            
+            // Clean up multiple separators
+            filename = filename.replace(/[-_\s]+/g, '_').replace(/^[-_]+|[-_]+$/g, '');
+            
+            return `${filename}.${extension}`;
+        }
+
+        function sanitizeFilename(str) {
+            if (!str) return 'untitled';
+            return str.toString()
+                     .replace(/[<>:"/\\|?*]/g, '')
+                     .replace(/\s+/g, '_')
+                     .substring(0, 50)
+                     .trim();
+        }
+
+        function downloadMarkdown() {
+            if (!currentVideoData) {
+                showAlert('No video data to download!', 'error');
+                return;
+            }
+
+            const activeView = getActiveTranscriptView();
+            let markdown;
+            let filename;
+            
+            if (activeView === 'stitched') {
+                markdown = generateStitchedMarkdown(currentVideoData);
+                filename = generateSmartFilename({
+                    ...currentVideoData,
+                    title: `${currentVideoData.metadata.title}_stitched`
+                }, 'youtube', 'md');
+            } else if (activeView === 'raw') {
+                markdown = generateRawMarkdown(currentVideoData);
+                filename = generateSmartFilename({
+                    ...currentVideoData,
+                    title: `${currentVideoData.metadata.title}_raw`
+                }, 'youtube', 'md');
+            } else {
+                markdown = generateMarkdown(currentVideoData);
+                filename = generateSmartFilename(currentVideoData, 'youtube', 'md');
+            }
+            
+            downloadFile(markdown, filename, 'text/markdown');
+            showAlert(`Downloaded ${activeView} transcript as ${filename}!`);
+        }
+
+        function downloadTranscript() {
+            if (!currentVideoData) {
+                showAlert('No video data to download!', 'error');
+                return;
+            }
+
+            let text;
+            if (settings.includeTimestamps) {
+                text = currentVideoData.transcript.map(entry => 
+                    `(${formatTimestamp(entry.start)}) ${entry.text}`).join('\n');
+            } else {
+                text = currentVideoData.transcript.map(entry => entry.text).join('\n');
+            }
+            
+            const filename = generateSmartFilename({
+                ...currentVideoData,
+                title: `${currentVideoData.metadata.title}_transcript`
+            }, 'youtube', 'txt');
+            
+            downloadFile(text, filename, 'text/plain');
+            showAlert(`Downloaded transcript as ${filename}!`);
+        }
+
+        function downloadBulkUrlItem(encodedUrl) {
+            const url = decodeURIComponent(encodedUrl);
+            const urlData = allExtractedUrls.find(data => data.url === url);
+            if (urlData) {
+                const markdown = generateMarkdownLink(urlData);
+                const filename = generateSmartFilename(urlData, 'url', 'md');
+                downloadFile(markdown, filename, 'text/markdown');
+                showAlert(`Downloaded ${filename}!`);
+            }
+        }
+
+        function exportAllAsCSV() {
+            if (!allExtractedData.length) {
+                showAlert('No data to export', 'error');
+                return;
+            }
+
+            const header = 'Video ID,Title,Channel,URL,Views,Likes,Comments,Duration,Thumbnail,Transcript\n';
+            const csvData = allExtractedData.map(data => {
+                const transcript = data.transcript.map(entry => 
+                    `(${formatTimestamp(entry.start)}) ${entry.text}`).join(' ');
+                
+                return [
+                    data.videoId,
+                    `"${data.metadata.title.replace(/"/g, '""')}"`,
+                    `"${data.metadata.channel.replace(/"/g, '""')}"`,
+                    data.url,
+                    data.metadata.views || 'Unknown',
+                    data.metadata.likes || 'Unknown',
+                    data.metadata.comments || 'Unknown',
+                    data.metadata.duration || 'Unknown',
+                    data.metadata.thumbnail || '',
+                    `"${transcript.replace(/"/g, '""')}"`
+                ].join(',');
+            }).join('\n');
+
+            const filename = generateSmartFilename({
+                title: 'youtube_transcripts_bulk',
+                channel: `${allExtractedData.length}_videos`
+            }, 'youtube', 'csv');
+            
+            downloadFile(header + csvData, filename, 'text/csv');
+            showAlert(`Exported ${allExtractedData.length} transcripts as ${filename}!`);
+        }
+
+        function exportAllAsJSON() {
+            if (!allExtractedData.length) {
+                showAlert('No data to export', 'error');
+                return;
+            }
+
+            const filename = generateSmartFilename({
+                title: 'youtube_transcripts_bulk',
+                channel: `${allExtractedData.length}_videos`
+            }, 'youtube', 'json');
+            
+            downloadFile(JSON.stringify(allExtractedData, null, 2), filename, 'application/json');
+            showAlert(`Exported ${allExtractedData.length} transcripts as ${filename}!`);
+        }
+
+        async function exportAllAsZip() {
+            if (!allExtractedData.length) {
+                showAlert('No data to export', 'error');
+                return;
+            }
+
+            const zip = new JSZip();
+            
+            // Add individual markdown files with smart names
+            allExtractedData.forEach((data, index) => {
+                const markdown = generateMarkdown(data);
+                const filename = generateSmartFilename({
+                    ...data,
+                    title: `${index + 1}_${data.metadata.title}`
+                }, 'youtube', 'md');
+                zip.file(filename, markdown);
+            });
+
+            // Add CSV file
+            const csvHeader = 'Video ID,Title,Channel,URL,Views,Likes,Comments,Duration,Thumbnail,Transcript\n';
+            const csvData = allExtractedData.map(data => {
+                const transcript = data.transcript.map(entry => 
+                    `(${formatTimestamp(entry.start)}) ${entry.text}`).join(' ');
+                
+                return [
+                    data.videoId,
+                    `"${data.metadata.title.replace(/"/g, '""')}"`,
+                    `"${data.metadata.channel.replace(/"/g, '""')}"`,
+                    data.url,
+                    data.metadata.views || 'Unknown',
+                    data.metadata.likes || 'Unknown', 
+                    data.metadata.comments || 'Unknown',
+                    data.metadata.duration || 'Unknown',
+                    data.metadata.thumbnail || '',
+                    `"${transcript.replace(/"/g, '""')}"`
+                ].join(',');
+            }).join('\n');
+            
+            const csvFilename = generateSmartFilename({
+                title: 'all_transcripts_summary',
+                channel: `${allExtractedData.length}_videos`
+            }, 'youtube', 'csv');
+            zip.file(csvFilename, csvHeader + csvData);
+
+            // Generate and download ZIP
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            const zipFilename = generateSmartFilename({
+                title: 'youtube_transcripts_archive',
+                channel: `${allExtractedData.length}_videos`
+            }, 'youtube', 'zip');
+            
+            const url = URL.createObjectURL(zipBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = zipFilename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showAlert(`ZIP archive downloaded as ${zipFilename}!`);
+        }
+
+        function downloadAllUrlsAsZip() {
+            const successfulUrls = allExtractedUrls.filter(u => u.success);
+            if (successfulUrls.length === 0) {
+                showAlert('No successful URL conversions to download!', 'error', 'bulkUrlError');
+                return;
+            }
+            
+            const zip = new JSZip();
+            
+            successfulUrls.forEach((urlData, index) => {
+                const markdown = generateMarkdownLink(urlData);
+                const filename = generateSmartFilename({
+                    ...urlData,
+                    title: `${index + 1}_${urlData.title}`
+                }, 'url', 'md');
+                zip.file(filename, markdown);
+            });
+            
+            // Add a combined file with smart naming
+            const combinedMarkdown = successfulUrls.map(urlData => generateMarkdownLink(urlData)).join('\n');
+            const combinedFilename = generateSmartFilename({
+                title: 'all_links_combined',
+                domain: `${successfulUrls.length}_urls`
+            }, 'url', 'md');
+            zip.file(combinedFilename, combinedMarkdown);
+            
+            zip.generateAsync({ type: 'blob' }).then(function(content) {
+                const url = URL.createObjectURL(content);
+                const a = document.createElement('a');
+                const zipFilename = generateSmartFilename({
+                    title: 'url_conversions_archive',
+                    domain: `${successfulUrls.length}_urls`
+                }, 'url', 'zip');
+                a.href = url;
+                a.download = zipFilename;
+                a.click();
+                URL.revokeObjectURL(url);
+                showAlert(`ZIP archive downloaded as ${zipFilename}!`, 'success', 'bulkUrlSuccess');
+            });
+        }
+
+        function exportUrlsAsJSON() {
+            if (allExtractedUrls.length === 0) {
+                showAlert('No URL data to export!', 'error', 'bulkUrlError');
+                return;
+            }
+            
+            const jsonData = {
+                exportedAt: new Date().toISOString(),
+                totalUrls: allExtractedUrls.length,
+                successfulUrls: allExtractedUrls.filter(u => u.success).length,
+                urls: allExtractedUrls
+            };
+            
+            const filename = generateSmartFilename({
+                title: 'url_conversions_data',
+                domain: `${allExtractedUrls.length}_urls`
+            }, 'url', 'json');
+            
+            downloadFile(JSON.stringify(jsonData, null, 2), filename, 'application/json');
+            showAlert(`Exported ${allExtractedUrls.length} URLs as ${filename}!`);
         }
     </script>
     
