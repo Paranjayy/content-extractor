@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎬 Media Harvest - Professional Content Extraction Suite</title>
+    <link rel="stylesheet" href="assets/styles.css">
+    <style>
+        .hero-section {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: var(--white);
+            text-align: center;
+            padding: var(--space-20) var(--space-5);
+            margin-bottom: var(--space-10);
+        }
+        
+        .hero-title {
+            font-size: var(--text-5xl);
+            font-weight: 300;
+            margin-bottom: var(--space-4);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .hero-subtitle {
+            font-size: var(--text-xl);
+            opacity: 0.9;
+            margin-bottom: var(--space-8);
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .feature-highlights {
+            display: flex;
+            justify-content: center;
+            gap: var(--space-6);
+            flex-wrap: wrap;
+            margin-top: var(--space-8);
+        }
+        
+        .feature-highlight {
+            background: rgba(255, 255, 255, 0.1);
+            padding: var(--space-4) var(--space-6);
+            border-radius: var(--radius-lg);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: var(--transition);
+        }
+        
+        .feature-highlight:hover {
+            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: var(--space-6);
+            margin: var(--space-10) 0;
+        }
+        
+        .tool-card {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .tool-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-4);
+            margin-bottom: var(--space-4);
+        }
+        
+        .tool-icon {
+            font-size: var(--text-4xl);
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: var(--radius-lg);
+            color: var(--white);
+        }
+        
+        .tool-info h3 {
+            font-size: var(--text-2xl);
+            font-weight: 600;
+            margin-bottom: var(--space-2);
+            color: var(--gray-900);
+        }
+        
+        .tool-info p {
+            color: var(--gray-600);
+            line-height: 1.6;
+        }
+        
+        .tool-features {
+            margin: var(--space-5) 0;
+        }
+        
+        .tool-features h4 {
+            font-size: var(--text-lg);
+            font-weight: 600;
+            margin-bottom: var(--space-3);
+            color: var(--gray-800);
+        }
+        
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-2);
+            list-style: none;
+        }
+        
+        .feature-list li {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: var(--space-2);
+            background: var(--gray-50);
+            border-radius: var(--radius);
+            font-size: var(--text-sm);
+        }
+        
+        .feature-list li::before {
+            content: "✓";
+            color: var(--success);
+            font-weight: bold;
+        }
+        
+        .tool-actions {
+            display: flex;
+            gap: var(--space-3);
+            margin-top: var(--space-5);
+        }
+        
+        .version-badge {
+            position: absolute;
+            top: var(--space-4);
+            right: var(--space-4);
+            background: var(--success);
+            color: var(--white);
+            padding: var(--space-1) var(--space-3);
+            border-radius: var(--radius-full);
+            font-size: var(--text-xs);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .version-badge.enhanced {
+            background: linear-gradient(45deg, var(--success), #10b981);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .stats-section {
+            background: var(--gray-50);
+            padding: var(--space-10) var(--space-5);
+            text-align: center;
+            margin: var(--space-10) 0;
+            border-radius: var(--radius-xl);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-6);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .stat-item {
+            background: var(--white);
+            padding: var(--space-6);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+        }
+        
+        .stat-number {
+            font-size: var(--text-4xl);
+            font-weight: 700;
+            color: var(--primary);
+            display: block;
+        }
+        
+        .stat-label {
+            font-size: var(--text-sm);
+            color: var(--gray-600);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: var(--space-2);
+        }
+        
+        .cta-section {
+            text-align: center;
+            padding: var(--space-16) var(--space-5);
+        }
+        
+        .cta-title {
+            font-size: var(--text-3xl);
+            font-weight: 600;
+            margin-bottom: var(--space-4);
+            color: var(--gray-900);
+        }
+        
+        .cta-subtitle {
+            font-size: var(--text-lg);
+            color: var(--gray-600);
+            margin-bottom: var(--space-8);
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .cta-buttons {
+            display: flex;
+            justify-content: center;
+            gap: var(--space-4);
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container">
+            <h1 class="hero-title">🎬 Media Harvest</h1>
+            <p class="hero-subtitle">
+                Professional-grade content extraction suite with advanced bulk processing, 
+                regex pattern matching, and comprehensive export capabilities.
+            </p>
+            
+            <div class="feature-highlights">
+                <div class="feature-highlight">
+                    <strong>✨ Enhanced</strong><br>
+                    Regex Support
+                </div>
+                <div class="feature-highlight">
+                    <strong>⚡ Bulk</strong><br>
+                    Processing
+                </div>
+                <div class="feature-highlight">
+                    <strong>🎯 Smart</strong><br>
+                    Filtering
+                </div>
+                <div class="feature-highlight">
+                    <strong>📁 Multiple</strong><br>
+                    Export Formats
+                </div>
+                <div class="feature-highlight">
+                    <strong>🔒 Privacy</strong><br>
+                    Focused
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="container">
+        <!-- Tools Grid -->
+        <div class="tools-grid">
+            <!-- Enhanced Reddit Downloader -->
+            <div class="card tool-card">
+                <div class="version-badge enhanced">Enhanced</div>
+                <div class="card-body">
+                    <div class="tool-header">
+                        <div class="tool-icon">🎯</div>
+                        <div class="tool-info">
+                            <h3>Reddit Downloader Pro</h3>
+                            <p>Advanced Reddit content extraction with regex support, bulk processing, and intelligent filtering.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="tool-features">
+                        <h4>🚀 Enhanced Features</h4>
+                        <ul class="feature-list">
+                            <li>Regex pattern matching</li>
+                            <li>Bulk URL processing</li>
+                            <li>Advanced content filters</li>
+                            <li>4 export formats</li>
+                            <li>Real-time progress</li>
+                            <li>Session management</li>
+                            <li>Smart validation</li>
+                            <li>Mobile responsive</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="tool-actions">
+                        <a href="reddit_enhanced.html" class="btn btn-primary btn-lg">
+                            🎯 Launch Enhanced
+                        </a>
+                        <a href="reddit_downloader.html" class="btn btn-secondary">
+                            📱 Classic Version
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- YouTube Transcript Extractor -->
+            <div class="card tool-card">
+                <div class="card-body">
+                    <div class="tool-header">
+                        <div class="tool-icon">📺</div>
+                        <div class="tool-info">
+                            <h3>YouTube Transcript Extractor</h3>
+                            <p>Extract transcripts from YouTube videos and playlists with metadata enrichment and multiple export options.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="tool-features">
+                        <h4>💡 Features</h4>
+                        <ul class="feature-list">
+                            <li>Single & batch processing</li>
+                            <li>Playlist support</li>
+                            <li>Multiple languages</li>
+                            <li>Rich metadata</li>
+                            <li>Timestamp preservation</li>
+                            <li>Auto-generated fallback</li>
+                            <li>Export options</li>
+                            <li>API integration</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="tool-actions">
+                        <a href="index.html" class="btn btn-primary btn-lg">
+                            📺 Launch Tool
+                        </a>
+                        <a href="standalone_extractor.html" class="btn btn-info">
+                            ✨ Browser-Only
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- URL to Markdown Converter -->
+            <div class="card tool-card">
+                <div class="card-body">
+                    <div class="tool-header">
+                        <div class="tool-icon">🔗</div>
+                        <div class="tool-info">
+                            <h3>URL to Markdown</h3>
+                            <p>Convert URLs to structured markdown links with rich metadata extraction and customizable formatting.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="tool-features">
+                        <h4>🔧 Features</h4>
+                        <ul class="feature-list">
+                            <li>Metadata extraction</li>
+                            <li>Multiple platforms</li>
+                            <li>Custom templates</li>
+                            <li>Bulk processing</li>
+                            <li>Image optimization</li>
+                            <li>CSV export</li>
+                            <li>Live preview</li>
+                            <li>Format validation</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="tool-actions">
+                        <a href="simple_extractor.html" class="btn btn-primary btn-lg">
+                            🔗 Launch Tool
+                        </a>
+                        <a href="standalone_extractor.html" class="btn btn-info">
+                            ✨ Standalone
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Standalone Browser Edition -->
+            <div class="card tool-card">
+                <div class="version-badge">Client-Side</div>
+                <div class="card-body">
+                    <div class="tool-header">
+                        <div class="tool-icon">⚡</div>
+                        <div class="tool-info">
+                            <h3>Standalone Edition</h3>
+                            <p>Browser-only version that works entirely client-side with no backend required. Perfect for privacy-focused users.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="tool-features">
+                        <h4>🛡️ Privacy Features</h4>
+                        <ul class="feature-list">
+                            <li>No data collection</li>
+                            <li>Client-side processing</li>
+                            <li>Reddit JSON API</li>
+                            <li>YouTube oEmbed</li>
+                            <li>Instant results</li>
+                            <li>Works offline</li>
+                            <li>No servers required</li>
+                            <li>Open source</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="tool-actions">
+                        <a href="standalone_extractor.html" class="btn btn-success btn-lg">
+                            ⚡ Launch Standalone
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Developer Tools -->
+            <div class="card tool-card">
+                <div class="card-body">
+                    <div class="tool-header">
+                        <div class="tool-icon">🔧</div>
+                        <div class="tool-info">
+                            <h3>Developer & Debug Tools</h3>
+                            <p>Backend connectivity testing, API debugging, and development utilities for troubleshooting and optimization.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="tool-features">
+                        <h4>🛠️ Tools</h4>
+                        <ul class="feature-list">
+                            <li>API health checks</li>
+                            <li>Connectivity testing</li>
+                            <li>Error diagnostics</li>
+                            <li>Performance metrics</li>
+                            <li>Request monitoring</li>
+                            <li>Response validation</li>
+                            <li>Debug console</li>
+                            <li>System status</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="tool-actions">
+                        <a href="debug_frontend.html" class="btn btn-info btn-lg">
+                            🔧 Debug Tools
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GitHub Pages Deployment -->
+            <div class="card tool-card">
+                <div class="version-badge">Live</div>
+                <div class="card-body">
+                    <div class="tool-header">
+                        <div class="tool-icon">🌐</div>
+                        <div class="tool-info">
+                            <h3>GitHub Pages Deployment</h3>
+                            <p>Automatically deployed version with GitHub Actions. Access all tools online without local setup.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="tool-features">
+                        <h4>☁️ Online Features</h4>
+                        <ul class="feature-list">
+                            <li>Auto deployment</li>
+                            <li>CDN delivery</li>
+                            <li>HTTPS enabled</li>
+                            <li>Global access</li>
+                            <li>No installation</li>
+                            <li>Always updated</li>
+                            <li>Mobile optimized</li>
+                            <li>Fast loading</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="tool-actions">
+                        <a href="#" class="btn btn-primary btn-lg" onclick="alert('Will be live once repository is public!')">
+                            🌐 Visit Online
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Section -->
+        <section class="stats-section">
+            <h2 style="margin-bottom: var(--space-8); color: var(--gray-900);">📊 Project Statistics</h2>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-number">6</span>
+                    <div class="stat-label">Professional Tools</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">4</span>
+                    <div class="stat-label">Export Formats</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">100%</span>
+                    <div class="stat-label">Mobile Responsive</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">0</span>
+                    <div class="stat-label">Data Collection</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Call to Action -->
+        <section class="cta-section">
+            <h2 class="cta-title">🚀 Ready to Extract Content Like a Pro?</h2>
+            <p class="cta-subtitle">
+                Choose your preferred tool and start extracting content with professional-grade features 
+                and privacy-focused design.
+            </p>
+            <div class="cta-buttons">
+                <a href="reddit_enhanced.html" class="btn btn-primary btn-lg">
+                    🎯 Start with Reddit Pro
+                </a>
+                <a href="standalone_extractor.html" class="btn btn-success btn-lg">
+                    ⚡ Try Standalone Edition
+                </a>
+                <a href="index.html" class="btn btn-info btn-lg">
+                    📺 Extract YouTube Transcripts
+                </a>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // Add some interactive polish
+        document.addEventListener('DOMContentLoaded', function() {
+            // Animate stat numbers on scroll
+            const observerOptions = {
+                threshold: 0.5,
+                rootMargin: '0px 0px -50px 0px'
+            };
+            
+            const observer = new IntersectionObserver(function(entries) {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const statNumber = entry.target.querySelector('.stat-number');
+                        const finalNumber = statNumber.textContent;
+                        
+                        if (finalNumber.includes('%')) {
+                            animateNumber(statNumber, 0, parseInt(finalNumber), '%');
+                        } else if (!isNaN(parseInt(finalNumber))) {
+                            animateNumber(statNumber, 0, parseInt(finalNumber));
+                        }
+                        
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, observerOptions);
+            
+            document.querySelectorAll('.stat-item').forEach(item => {
+                observer.observe(item);
+            });
+        });
+        
+        function animateNumber(element, start, end, suffix = '') {
+            const duration = 1500;
+            const range = end - start;
+            const minTimer = 50;
+            const stepTime = Math.abs(Math.floor(duration / range));
+            const timer = Math.max(stepTime, minTimer);
+            
+            let current = start;
+            const increment = range / (duration / timer);
+            
+            const counter = setInterval(() => {
+                current += increment;
+                if (current >= end) {
+                    current = end;
+                    clearInterval(counter);
+                }
+                element.textContent = Math.floor(current) + suffix;
+            }, timer);
+        }
+        
+        // Add subtle hover effects
+        document.querySelectorAll('.tool-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-4px)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+            });
+        });
+        
+        // Console welcome message
+        console.log(`
+🎬 Media Harvest - Professional Content Extraction Suite
+        
+🚀 Enhanced Features:
+✅ Unified design system
+✅ Regex pattern matching  
+✅ Bulk processing capabilities
+✅ Advanced filtering options
+✅ Multiple export formats
+✅ Session management
+✅ Real-time progress tracking
+✅ Mobile-first responsive design
+
+💡 Ready for production use!
+        `);
+    </script>
+</body>
+</html> 
