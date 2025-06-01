@@ -352,22 +352,23 @@
             flex-wrap: wrap;
         }
 
-        /* Compact Results Layout */
+        /* Enhanced Compact Results Layout */
         .bulk-result-compact {
             display: grid;
-            grid-template-columns: auto 1fr auto;
-            gap: 15px;
+            grid-template-columns: 80px 1fr 120px;
+            gap: 10px;
             align-items: center;
-            padding: 12px 15px;
-            margin: 5px 0;
+            padding: 8px 12px;
+            margin: 3px 0;
             background: #f8f9fa;
-            border-radius: 8px;
-            border-left: 4px solid #667eea;
+            border-radius: 6px;
+            border-left: 3px solid #667eea;
+            font-size: 13px;
         }
 
         .bulk-result-compact.success {
             border-left-color: #48bb78;
-            background: #c6f6d5;
+            background: #e6fffa;
         }
 
         .bulk-result-compact.error {
@@ -376,11 +377,12 @@
         }
 
         .result-status-badge {
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 12px;
+            padding: 3px 6px;
+            border-radius: 10px;
+            font-size: 10px;
             font-weight: 600;
             white-space: nowrap;
+            text-align: center;
         }
 
         .result-status-badge.success {
@@ -394,39 +396,49 @@
         }
 
         .result-content {
-            min-width: 0; /* Allow text truncation */
+            min-width: 0;
+            overflow: hidden;
         }
 
         .result-title {
             font-weight: 600;
             color: #1f2937;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            font-size: 13px;
+            line-height: 1.2;
         }
 
         .result-url {
-            font-size: 12px;
+            font-size: 11px;
             color: #6b7280;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            line-height: 1.1;
         }
 
         .result-actions {
             display: flex;
-            gap: 5px;
+            gap: 3px;
             flex-shrink: 0;
+            justify-content: flex-end;
         }
 
         .btn-mini {
-            padding: 4px 8px;
-            font-size: 11px;
-            border-radius: 4px;
+            padding: 3px 6px;
+            font-size: 10px;
+            border-radius: 3px;
             border: none;
             cursor: pointer;
             transition: all 0.2s;
+            min-width: 24px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .btn-mini.primary {
@@ -439,9 +451,28 @@
             color: white;
         }
 
+        .btn-mini.retry {
+            background: #f59e0b;
+            color: white;
+        }
+
         .btn-mini:hover {
             transform: translateY(-1px);
             opacity: 0.9;
+        }
+
+        /* Table Header for Compact View */
+        .compact-header {
+            display: grid;
+            grid-template-columns: 80px 1fr 120px;
+            gap: 10px;
+            padding: 8px 12px;
+            background: #e5e7eb;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 12px;
+            color: #374151;
+            margin-bottom: 5px;
         }
 
         /* Toggle for layout modes */
@@ -453,11 +484,16 @@
         .layout-toggle button {
             background: #f3f4f6;
             border: 1px solid #d1d5db;
-            padding: 6px 12px;
-            border-radius: 6px;
+            padding: 5px 10px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 12px;
-            margin-left: 5px;
+            font-size: 11px;
+            margin-left: 3px;
+            transition: all 0.2s;
+        }
+
+        .layout-toggle button:hover {
+            background: #e5e7eb;
         }
 
         .layout-toggle button.active {
@@ -479,16 +515,16 @@
             
             <!-- Navigation Links -->
             <div class="nav-links" style="margin-top: 20px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
-                <a href="/" class="btn" style="text-decoration: none; font-size: 14px; background: linear-gradient(45deg, #667eea, #764ba2); color: white; padding: 8px 16px; border-radius: 6px;">
+                <a href="/frontend/" class="btn" style="text-decoration: none; font-size: 14px; background: linear-gradient(45deg, #667eea, #764ba2); color: white; padding: 8px 16px; border-radius: 6px;">
                     🎬 Full YouTube App
                 </a>
-                <a href="/debug_frontend.html" class="btn" style="text-decoration: none; font-size: 14px; background: linear-gradient(45deg, #6b7280, #374151); color: white; padding: 8px 16px; border-radius: 6px;">
+                <a href="/frontend/debug_frontend.html" class="btn" style="text-decoration: none; font-size: 14px; background: linear-gradient(45deg, #6b7280, #374151); color: white; padding: 8px 16px; border-radius: 6px;">
                     🔧 Debug Tools
                 </a>
-                <a href="/simple_extractor.html" class="btn" style="text-decoration: none; font-size: 14px; background: linear-gradient(45deg, #10b981, #059669); color: white; padding: 8px 16px; border-radius: 6px;">
+                <a href="/frontend/simple_extractor.html" class="btn" style="text-decoration: none; font-size: 14px; background: linear-gradient(45deg, #10b981, #059669); color: white; padding: 8px 16px; border-radius: 6px;">
                     🔗 Simple URL Extractor (Current)
                 </a>
-                <a href="/reddit_downloader.html" class="btn" style="text-decoration: none; font-size: 14px; background: linear-gradient(45deg, #ff4500, #ff6b35); color: white; padding: 8px 16px; border-radius: 6px;">
+                <a href="/frontend/reddit_downloader.html" class="btn" style="text-decoration: none; font-size: 14px; background: linear-gradient(45deg, #ff4500, #ff6b35); color: white; padding: 8px 16px; border-radius: 6px;">
                     🔴 Reddit Downloader
                 </a>
             </div>
@@ -568,9 +604,12 @@
 
                 <!-- Layout Toggle -->
                 <div class="layout-toggle" id="layoutToggle" style="display: none;">
-                    <label style="font-size: 12px; color: #6b7280; margin-right: 10px;">Layout:</label>
-                    <button class="active" onclick="setLayout('compact')">📊 Compact</button>
-                    <button onclick="setLayout('detailed')">📋 Detailed</button>
+                    <label style="font-size: 12px; color: #6b7280; margin-right: 10px;">View:</label>
+                    <button class="active" onclick="setLayout('compact')">📊 Compact Table</button>
+                    <button onclick="setLayout('detailed')">📋 Detailed Cards</button>
+                    <small style="margin-left: 10px; color: #9ca3af; font-size: 10px;">
+                        Compact saves ~60% space
+                    </small>
                 </div>
 
                 <div id="bulkResults"></div>
@@ -1228,10 +1267,22 @@
             const resultDiv = document.createElement('div');
             
             if (currentLayout === 'compact') {
+                // Add header if this is the first result and compact view
+                if (resultsDiv.children.length === 0) {
+                    const headerDiv = document.createElement('div');
+                    headerDiv.className = 'compact-header';
+                    headerDiv.innerHTML = `
+                        <div>Status</div>
+                        <div>Title & URL</div>
+                        <div>Actions</div>
+                    `;
+                    resultsDiv.appendChild(headerDiv);
+                }
+                
                 resultDiv.className = `bulk-result-compact ${status}`;
                 
                 const markdown = `[${metadata.title}](${url})`;
-                const statusBadge = status === 'success' ? '✅ Success' : '❌ Failed';
+                const statusBadge = status === 'success' ? '✅' : '❌';
                 
                 if (status === 'success') {
                     resultDiv.innerHTML = `
@@ -1253,7 +1304,7 @@
                             <div class="result-url" style="color: #dc2626;">${metadata.description || metadata.error || 'Unknown error'}</div>
                         </div>
                         <div class="result-actions">
-                            <button class="btn-mini secondary" onclick="retryUrl('${url}')">🔄</button>
+                            <button class="btn-mini retry" onclick="retryUrl('${url}')">🔄</button>
                         </div>
                     `;
                 }
