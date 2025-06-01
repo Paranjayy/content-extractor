@@ -481,6 +481,60 @@
                     </small>
                 </div>
 
+                <!-- New Regex Support Section -->
+                <div class="regex-support" style="background: linear-gradient(135deg, #4a5568, #2d3748); padding: 20px; border-radius: 10px; margin: 20px 0; border: 1px solid #667eea;">
+                    <h4 style="margin-top: 0; color: #667eea;">🔍 Regex Pattern Support</h4>
+                    <p style="margin-bottom: 15px; color: #e2e8f0; font-size: 14px;">
+                        Generate URLs from patterns instead of typing each one manually. Perfect for bulk operations!
+                    </p>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr auto; gap: 15px; margin-bottom: 15px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; color: #667eea;">Regex Pattern:</label>
+                            <input type="text" id="regexPattern" placeholder="https://www.reddit.com/r/programming/comments/[a-z0-9]{6}/" 
+                                   style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #667eea; background: #2d3748; color: #e2e8f0;">
+                            <small style="color: #a0aec0; margin-top: 3px; display: block;">
+                                Example: Use [a-z0-9]{6} for 6-character alphanumeric post IDs
+                            </small>
+                        </div>
+                        <div style="align-self: end;">
+                            <button onclick="generateFromRegex()" style="background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; white-space: nowrap;">
+                                🎯 Generate URLs
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; color: #667eea;">Sample Post IDs (one per line):</label>
+                            <textarea id="regexSamples" rows="4" placeholder="abc123&#10;def456&#10;ghi789" 
+                                      style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #667eea; background: #2d3748; color: #e2e8f0; font-family: monospace;"></textarea>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; color: #667eea;">Quick Patterns:</label>
+                            <div style="display: flex; flex-direction: column; gap: 5px;">
+                                <button onclick="setQuickPattern('post')" style="background: #48bb78; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                    📝 Reddit Post Pattern
+                                </button>
+                                <button onclick="setQuickPattern('user')" style="background: #ed8936; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                    👤 User Profile Pattern
+                                </button>
+                                <button onclick="setQuickPattern('subreddit')" style="background: #9f7aea; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                    📱 Subreddit Pattern
+                                </button>
+                                <button onclick="clearRegexInputs()" style="background: #e53e3e; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                    🗑️ Clear All
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="regexPreview" style="margin-top: 15px; padding: 10px; background: #1a202c; border-radius: 5px; border: 1px solid #4a5568; display: none;">
+                        <label style="color: #667eea; font-weight: bold;">Generated URLs Preview:</label>
+                        <pre style="color: #e2e8f0; margin: 5px 0 0 0; font-size: 12px; white-space: pre-wrap;"></pre>
+                    </div>
+                </div>
+
                 <div class="bulk-options" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
                     <h4 style="margin-top: 0;">🔧 Bulk Processing Options:</h4>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
@@ -495,6 +549,10 @@
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <input type="checkbox" id="bulkShowProgress" checked>
                             <label for="bulkShowProgress">Show progress details</label>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="bulkValidateUrls" checked>
+                            <label for="bulkValidateUrls">Validate URLs before processing</label>
                         </div>
                     </div>
                 </div>
@@ -1318,6 +1376,40 @@
                 return;
             }
 
+            // Validate URLs if option is enabled
+            const bulkValidateUrls = document.getElementById('bulkValidateUrls')?.checked ?? true;
+            let validUrls = urls;
+            let invalidUrls = [];
+            
+            if (bulkValidateUrls) {
+                validUrls = [];
+                invalidUrls = [];
+                
+                urls.forEach(url => {
+                    if (validateRedditUrl(url)) {
+                        validUrls.push(url);
+                    } else {
+                        invalidUrls.push(url);
+                    }
+                });
+                
+                if (invalidUrls.length > 0) {
+                    const invalidDisplay = invalidUrls.length > 5 
+                        ? `${invalidUrls.slice(0, 5).join(', ')} and ${invalidUrls.length - 5} more...`
+                        : invalidUrls.join(', ');
+                    
+                    const proceed = confirm(`Found ${invalidUrls.length} invalid Reddit URL(s):\n${invalidDisplay}\n\nContinue with ${validUrls.length} valid URLs?`);
+                    if (!proceed) {
+                        return;
+                    }
+                }
+                
+                if (validUrls.length === 0) {
+                    showError('No valid Reddit URLs found. Please check your URLs and try again.');
+                    return;
+                }
+            }
+
             // Reset stats
             bulkProcessingStats = {
                 processed: 0,
@@ -1351,13 +1443,13 @@
             document.getElementById('bulkDownloadBtn').style.display = 'none';
 
             // Process each URL
-            for (let i = 0; i < urls.length; i++) {
-                const url = urls[i];
+            for (let i = 0; i < validUrls.length; i++) {
+                const url = validUrls[i];
                 
                 try {
                     redditDownloader.updateProgress(
-                        Math.round((i / urls.length) * 100), 
-                        `Processing ${i + 1}/${urls.length}: ${url.substring(0, 50)}...`
+                        Math.round((i / validUrls.length) * 100), 
+                        `Processing ${i + 1}/${validUrls.length}: ${url.substring(0, 50)}...`
                     );
 
                     const result = await redditDownloader.downloadContent(url, options);
@@ -1393,7 +1485,7 @@
                 updateBulkStats();
                 
                 // Rate limiting - wait between requests
-                if (i < urls.length - 1) {
+                if (i < validUrls.length - 1) {
                     await new Promise(resolve => setTimeout(resolve, 1000));
                 }
             }
@@ -1887,6 +1979,111 @@
         });
 
         console.log('🔴 Reddit Downloader Pro v2.1 loaded');
+
+        // Regex Pattern Support Functions
+        function setQuickPattern(type) {
+            const regexPattern = document.getElementById('regexPattern');
+            const regexSamples = document.getElementById('regexSamples');
+            
+            switch(type) {
+                case 'post':
+                    regexPattern.value = 'https://www.reddit.com/r/SUBREDDIT/comments/POST_ID/';
+                    regexSamples.value = 'Replace SUBREDDIT and use actual post IDs:\nabc123\ndef456\nghi789\njkl012';
+                    break;
+                case 'user':
+                    regexPattern.value = 'https://www.reddit.com/user/USERNAME/';
+                    regexSamples.value = 'Replace USERNAME with actual usernames:\njohn_doe\njane_smith\ntech_guru\ncoding_master';
+                    break;
+                case 'subreddit':
+                    regexPattern.value = 'https://www.reddit.com/r/SUBREDDIT/top/?t=TIMEFRAME';
+                    regexSamples.value = 'Replace SUBREDDIT and TIMEFRAME:\nprogramming+day\njavascript+week\nreact+month\nwebdev+year';
+                    break;
+            }
+            
+            generateFromRegex();
+        }
+        
+        function clearRegexInputs() {
+            document.getElementById('regexPattern').value = '';
+            document.getElementById('regexSamples').value = '';
+            document.getElementById('regexPreview').style.display = 'none';
+        }
+        
+        function generateFromRegex() {
+            const pattern = document.getElementById('regexPattern').value.trim();
+            const samples = document.getElementById('regexSamples').value.trim();
+            const preview = document.getElementById('regexPreview');
+            const previewPre = preview.querySelector('pre');
+            
+            if (!pattern || !samples) {
+                preview.style.display = 'none';
+                return;
+            }
+            
+            const sampleLines = samples.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+            const generatedUrls = [];
+            
+            try {
+                sampleLines.forEach(sample => {
+                    let generatedUrl = pattern;
+                    
+                    // Handle common placeholders
+                    if (pattern.includes('POST_ID')) {
+                        generatedUrl = generatedUrl.replace('POST_ID', sample);
+                    } else if (pattern.includes('USERNAME')) {
+                        generatedUrl = generatedUrl.replace('USERNAME', sample);
+                    } else if (pattern.includes('SUBREDDIT+') || pattern.includes('TIMEFRAME')) {
+                        const parts = sample.split('+');
+                        if (parts.length >= 2) {
+                            generatedUrl = generatedUrl.replace('SUBREDDIT', parts[0]).replace('TIMEFRAME', parts[1]);
+                        }
+                    } else {
+                        // Try to replace regex patterns with samples
+                        // Simple replacement for basic patterns
+                        generatedUrl = generatedUrl.replace(/\[a-z0-9\]\{[0-9]+\}/g, sample);
+                        generatedUrl = generatedUrl.replace(/\[a-zA-Z0-9_-\]\+/g, sample);
+                    }
+                    
+                    // Validate URL format
+                    if (generatedUrl.includes('reddit.com')) {
+                        generatedUrls.push(generatedUrl);
+                    }
+                });
+                
+                if (generatedUrls.length > 0) {
+                    previewPre.textContent = generatedUrls.join('\n');
+                    preview.style.display = 'block';
+                    
+                    // Auto-populate bulk input
+                    const bulkInput = document.getElementById('bulkRedditInput');
+                    const currentValue = bulkInput.value.trim();
+                    if (currentValue) {
+                        bulkInput.value = currentValue + '\n' + generatedUrls.join('\n');
+                    } else {
+                        bulkInput.value = generatedUrls.join('\n');
+                    }
+                } else {
+                    previewPre.textContent = 'No valid URLs could be generated from the pattern and samples.';
+                    preview.style.display = 'block';
+                }
+                
+            } catch (error) {
+                previewPre.textContent = `Error generating URLs: ${error.message}`;
+                preview.style.display = 'block';
+            }
+        }
+        
+        // Enhanced URL validation for bulk processing
+        function validateRedditUrl(url) {
+            const redditPatterns = [
+                /^https:\/\/(www\.)?reddit\.com\/r\/[^\/]+\/comments\/[^\/]+/,  // Post URLs
+                /^https:\/\/(www\.)?reddit\.com\/user\/[^\/]+/,                // User URLs
+                /^https:\/\/(www\.)?reddit\.com\/r\/[^\/]+$/,                  // Subreddit URLs
+                /^https:\/\/(www\.)?reddit\.com\/r\/[^\/]+\/[^\/]+/            // Subreddit with filters
+            ];
+            
+            return redditPatterns.some(pattern => pattern.test(url));
+        }
     </script>
 </body>
 </html> 

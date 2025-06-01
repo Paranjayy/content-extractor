@@ -733,86 +733,267 @@ class UrlMetadataExtractor:
             return self._fallback_metadata(url, f"Parsing error: {str(e)}")
 
     def _extract_best_thumbnail(self, soup, url, og_data):
-        """Extract the best available thumbnail/image"""
-        # Strategy 1: Open Graph image (highest priority)
+        """Extract the best available thumbnail/image with improved resolution detection"""
+        # Strategy 1: Open Graph image with size preference (highest priority)
         if og_data.get('image'):
-            return self._resolve_relative_url(og_data['image'], url)
+            og_image = self._resolve_relative_url(og_data['image'], url)
+            # Check for high-res variant
+            if og_image:
+                # Try to find high-res versions
+                high_res_variants = self._find_high_res_variants(og_image, soup)
+                if high_res_variants:
+                    return high_res_variants[0]  # Return the best one
+                return og_image
         
-        # Strategy 2: Twitter card image
-        twitter_image = soup.find('meta', {'name': 'twitter:image'})
-        if twitter_image and twitter_image.get('content'):
-            return self._resolve_relative_url(twitter_image.get('content'), url)
+        # Strategy 2: Look for multiple OG images and pick the largest
+        og_images = soup.find_all('meta', property='og:image')
+        if len(og_images) > 1:
+            for img_tag in og_images:
+                img_url = img_tag.get('content')
+                if img_url and self._is_high_quality_image(img_url):
+                    return self._resolve_relative_url(img_url, url)
         
-        # Strategy 3: Apple touch icon
-        apple_icon = soup.find('link', rel='apple-touch-icon')
-        if apple_icon and apple_icon.get('href'):
-            return self._resolve_relative_url(apple_icon.get('href'), url)
+        # Strategy 3: Twitter card image with size preference
+        twitter_images = [
+            soup.find('meta', {'name': 'twitter:image'}),
+            soup.find('meta', {'name': 'twitter:image:src'}),
+            soup.find('meta', {'property': 'twitter:image'})
+        ]
         
-        # Strategy 4: Favicon
-        favicon = soup.find('link', rel=lambda x: x and 'icon' in x.lower())
-        if favicon and favicon.get('href'):
-            return self._resolve_relative_url(favicon.get('href'), url)
+        for twitter_img in twitter_images:
+            if twitter_img and twitter_img.get('content'):
+                img_url = self._resolve_relative_url(twitter_img.get('content'), url)
+                if self._is_high_quality_image(img_url):
+                    return img_url
         
-        # Strategy 5: First meaningful image in content
-        for img in soup.find_all('img', src=True):
-            src = img.get('src')
-            if src and not any(skip in src.lower() for skip in ['logo', 'icon', 'button', 'arrow']):
-                return self._resolve_relative_url(src, url)
+        # Strategy 4: Schema.org structured data images
+        json_ld_scripts = soup.find_all('script', type='application/ld+json')
+        for script in json_ld_scripts:
+            try:
+                data = json.loads(script.string)
+                images = self._extract_schema_images(data)
+                if images:
+                    return self._resolve_relative_url(images[0], url)
+            except:
+                continue
+        
+        # Strategy 5: Look for high-quality content images
+        content_images = self._find_content_images(soup, url)
+        if content_images:
+            return content_images[0]
+        
+        # Strategy 6: Apple touch icon (prefer larger sizes)
+        apple_icons = soup.find_all('link', rel=lambda x: x and 'apple-touch-icon' in x)
+        best_apple_icon = None
+        best_size = 0
+        
+        for icon in apple_icons:
+            href = icon.get('href')
+            if href:
+                size = self._extract_icon_size(icon.get('sizes', ''))
+                if size > best_size:
+                    best_size = size
+                    best_apple_icon = href
+        
+        if best_apple_icon:
+            return self._resolve_relative_url(best_apple_icon, url)
+        
+        # Strategy 7: Favicon with size preference
+        favicons = soup.find_all('link', rel=lambda x: x and 'icon' in x.lower())
+        best_favicon = None
+        best_size = 0
+        
+        for favicon in favicons:
+            href = favicon.get('href')
+            if href:
+                size = self._extract_icon_size(favicon.get('sizes', ''))
+                if size > best_size:
+                    best_size = size
+                    best_favicon = href
+        
+        if best_favicon:
+            return self._resolve_relative_url(best_favicon, url)
         
         return None
 
-    def _resolve_relative_url(self, url_or_path, base_url):
-        """Convert relative URLs to absolute URLs"""
-        if not url_or_path:
-            return None
+    def _find_high_res_variants(self, base_image_url, soup):
+        """Find high-resolution variants of an image"""
+        if not base_image_url:
+            return []
+        
+        variants = []
+        
+        # Common high-res patterns
+        high_res_patterns = [
+            lambda url: url.replace('_normal', '_400x400'),  # Twitter
+            lambda url: url.replace('_normal', '_bigger'),   # Twitter
+            lambda url: url.replace('small', 'large'),       # Generic
+            lambda url: url.replace('thumb', 'full'),        # Generic
+            lambda url: url.replace('150x150', '1200x1200'), # Square sizes
+            lambda url: url.replace('300x300', '1200x1200'), # Square sizes
+            lambda url: url + '?w=1200&h=630',               # Query params
+        ]
+        
+        for pattern in high_res_patterns:
+            try:
+                variant = pattern(base_image_url)
+                if variant != base_image_url:
+                    variants.append(variant)
+            except:
+                continue
+        
+        return variants
+    
+    def _is_high_quality_image(self, img_url):
+        """Check if an image URL indicates high quality"""
+        if not img_url:
+            return False
             
-        if url_or_path.startswith('//'):
-            return 'https:' + url_or_path
-        elif url_or_path.startswith('/'):
-            parsed_base = urlparse(base_url)
-            return f"{parsed_base.scheme}://{parsed_base.netloc}{url_or_path}"
-        elif url_or_path.startswith('http'):
-            return url_or_path
-        else:
-            # Relative path
-            base_dir = '/'.join(base_url.rstrip('/').split('/')[:-1])
-            return f"{base_dir}/{url_or_path}"
-
-    def _fallback_metadata(self, url, error_msg):
-        """Enhanced fallback metadata when all extraction methods fail"""
-        domain = urlparse(url).netloc
+        high_quality_indicators = [
+            'large', 'big', 'full', 'original', 'hd', 'high',
+            '1200', '1920', '2048', 'maxres', 'master'
+        ]
         
-        # Try to make intelligent guesses based on domain
-        if 'twitter.com' in domain or 'x.com' in domain:
-            title = 'X/Twitter Post'
-            description = 'Twitter/X content (access limited)'
-            thumbnail = 'https://abs.twimg.com/favicons/twitter.3.ico'
-        elif 'reddit.com' in domain:
-            title = 'Reddit Post'
-            description = 'Reddit content (access limited)'  
-            thumbnail = 'https://www.redditstatic.com/favicon.ico'
-        elif 'youtube.com' in domain:
-            title = 'YouTube Video'
-            description = 'YouTube content (access limited)'
-            thumbnail = 'https://www.youtube.com/favicon.ico'
-        elif 'github.com' in domain:
-            title = 'GitHub Repository'
-            description = 'GitHub content (access limited)'
-            thumbnail = 'https://github.com/favicon.ico'
-        else:
-            title = domain.replace('www.', '').title()
-            description = f'Content from {domain}'
-            thumbnail = f'https://www.google.com/s2/favicons?domain={domain}&sz=64'
+        low_quality_indicators = [
+            'thumb', 'small', 'mini', 'icon', 'favicon',
+            '32x32', '16x16', '64x64', '128x128'
+        ]
         
-        return {
-            'title': title,
-            'description': description,
-            'thumbnail': thumbnail,
-            'domain': domain,
-            'og_data': {},
-            'error': error_msg,
-            'fallback': True
-        }
+        url_lower = img_url.lower()
+        
+        # Penalize low quality indicators
+        if any(indicator in url_lower for indicator in low_quality_indicators):
+            return False
+            
+        # Favor high quality indicators
+        if any(indicator in url_lower for indicator in high_quality_indicators):
+            return True
+            
+        return True  # Default to true if no specific indicators
+    
+    def _extract_schema_images(self, data):
+        """Extract images from JSON-LD structured data"""
+        images = []
+        
+        def find_images_recursive(obj):
+            if isinstance(obj, dict):
+                if 'image' in obj:
+                    img = obj['image']
+                    if isinstance(img, str):
+                        images.append(img)
+                    elif isinstance(img, list):
+                        images.extend([i for i in img if isinstance(i, str)])
+                    elif isinstance(img, dict) and 'url' in img:
+                        images.append(img['url'])
+                
+                for value in obj.values():
+                    find_images_recursive(value)
+            elif isinstance(obj, list):
+                for item in obj:
+                    find_images_recursive(item)
+        
+        find_images_recursive(data)
+        return images
+    
+    def _find_content_images(self, soup, base_url):
+        """Find high-quality images from page content"""
+        images = []
+        
+        # Look for images in main content areas
+        content_selectors = [
+            'main img', 'article img', '.content img', 
+            '.post img', '.entry img', '#content img'
+        ]
+        
+        for selector in content_selectors:
+            imgs = soup.select(selector)
+            for img in imgs[:3]:  # Limit to first 3
+                src = img.get('src') or img.get('data-src') or img.get('data-lazy-src')
+                if src and self._is_meaningful_content_image(img, src):
+                    resolved_url = self._resolve_relative_url(src, base_url)
+                    if resolved_url:
+                        images.append(resolved_url)
+        
+        # Also check regular img tags but filter more strictly
+        for img in soup.find_all('img', src=True)[:5]:
+            src = img.get('src')
+            if src and self._is_meaningful_content_image(img, src):
+                resolved_url = self._resolve_relative_url(src, base_url)
+                if resolved_url and resolved_url not in images:
+                    images.append(resolved_url)
+        
+        # Sort by quality indicators
+        return sorted(images, key=lambda url: self._image_quality_score(url), reverse=True)
+    
+    def _is_meaningful_content_image(self, img_tag, src):
+        """Check if an image is meaningful content (not UI elements)"""
+        skip_patterns = [
+            'logo', 'icon', 'button', 'arrow', 'nav', 'menu',
+            'banner', 'ad', 'sidebar', 'footer', 'header',
+            'pixel', 'spacer', 'tracking', 'analytics'
+        ]
+        
+        # Check src URL
+        src_lower = src.lower()
+        if any(pattern in src_lower for pattern in skip_patterns):
+            return False
+        
+        # Check img attributes
+        alt = (img_tag.get('alt') or '').lower()
+        class_names = ' '.join(img_tag.get('class', [])).lower()
+        
+        if any(pattern in alt or pattern in class_names for pattern in skip_patterns):
+            return False
+        
+        # Check dimensions if available
+        width = img_tag.get('width')
+        height = img_tag.get('height')
+        
+        if width and height:
+            try:
+                w, h = int(width), int(height)
+                # Skip very small images (likely icons/decorations)
+                if w < 100 or h < 100:
+                    return False
+                # Skip very wide/thin images (likely banners)
+                if w / h > 5 or h / w > 5:
+                    return False
+            except ValueError:
+                pass
+        
+        return True
+    
+    def _image_quality_score(self, img_url):
+        """Score an image URL for quality (higher is better)"""
+        score = 0
+        url_lower = img_url.lower()
+        
+        # High quality indicators
+        high_quality = ['large', 'full', 'original', 'hd', '1200', '1920', 'maxres']
+        score += sum(2 for indicator in high_quality if indicator in url_lower)
+        
+        # Medium quality indicators  
+        medium_quality = ['medium', '600', '800', '1000']
+        score += sum(1 for indicator in medium_quality if indicator in url_lower)
+        
+        # Low quality penalties
+        low_quality = ['thumb', 'small', 'mini', '150', '200', '300']
+        score -= sum(1 for indicator in low_quality if indicator in url_lower)
+        
+        return score
+    
+    def _extract_icon_size(self, sizes_attr):
+        """Extract numeric size from icon sizes attribute"""
+        if not sizes_attr:
+            return 0
+        
+        # Match patterns like "32x32", "180x180", etc.
+        import re
+        match = re.search(r'(\d+)x\d+', sizes_attr)
+        if match:
+            return int(match.group(1))
+        
+        return 0
 
     def extract_title(self, soup, url):
         """Extract title with multiple fallback strategies"""
@@ -876,6 +1057,59 @@ class UrlMetadataExtractor:
                 og_data[prop] = content
         
         return og_data
+
+    def _resolve_relative_url(self, url_or_path, base_url):
+        """Convert relative URLs to absolute URLs"""
+        if not url_or_path:
+            return None
+            
+        if url_or_path.startswith('//'):
+            return 'https:' + url_or_path
+        elif url_or_path.startswith('/'):
+            parsed_base = urlparse(base_url)
+            return f"{parsed_base.scheme}://{parsed_base.netloc}{url_or_path}"
+        elif url_or_path.startswith('http'):
+            return url_or_path
+        else:
+            # Relative path
+            base_dir = '/'.join(base_url.rstrip('/').split('/')[:-1])
+            return f"{base_dir}/{url_or_path}"
+
+    def _fallback_metadata(self, url, error_msg):
+        """Enhanced fallback metadata when all extraction methods fail"""
+        domain = urlparse(url).netloc
+        
+        # Try to make intelligent guesses based on domain
+        if 'twitter.com' in domain or 'x.com' in domain:
+            title = 'X/Twitter Post'
+            description = 'Twitter/X content (access limited)'
+            thumbnail = 'https://abs.twimg.com/favicons/twitter.3.ico'
+        elif 'reddit.com' in domain:
+            title = 'Reddit Post'
+            description = 'Reddit content (access limited)'  
+            thumbnail = 'https://www.redditstatic.com/favicon.ico'
+        elif 'youtube.com' in domain:
+            title = 'YouTube Video'
+            description = 'YouTube content (access limited)'
+            thumbnail = 'https://www.youtube.com/favicon.ico'
+        elif 'github.com' in domain:
+            title = 'GitHub Repository'
+            description = 'GitHub content (access limited)'
+            thumbnail = 'https://github.com/favicon.ico'
+        else:
+            title = domain.replace('www.', '').title()
+            description = f'Content from {domain}'
+            thumbnail = f'https://www.google.com/s2/favicons?domain={domain}&sz=128'  # Increased icon size
+        
+        return {
+            'title': title,
+            'description': description,
+            'thumbnail': thumbnail,
+            'domain': domain,
+            'og_data': {},
+            'error': error_msg,
+            'fallback': True
+        }
 
 url_extractor = UrlMetadataExtractor()
 
