@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 Reddit Downloader Pro - Enhanced Edition</title>
+    <link rel="stylesheet" href="assets/styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        /* 🎨 Reddit-specific styling */
+        .reddit-header {
+            background: linear-gradient(135deg, #ff4500 0%, #ff6b35 100%);
+        }
+        
+        .reddit-post {
+            border-left: 4px solid #ff4500;
+            background: var(--white);
+            margin: var(--space-4) 0;
+            padding: var(--space-5);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+        
+        .reddit-post:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .post-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--space-3);
+        }
+        
+        .post-title {
+            font-size: var(--text-lg);
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: var(--space-2);
+            line-height: 1.4;
+        }
+        
+        .post-meta {
+            display: flex;
+            gap: var(--space-4);
+            color: var(--gray-600);
+            font-size: var(--text-sm);
+            margin-bottom: var(--space-3);
+        }
+        
+        .post-content {
+            margin: var(--space-3) 0;
+            line-height: 1.6;
+        }
+        
+        .regex-help {
+            background: var(--gray-50);
+            padding: var(--space-4);
+            border-radius: var(--radius);
+            margin: var(--space-4) 0;
+            border-left: 4px solid var(--info);
+        }
+        
+        .regex-examples {
+            margin-top: var(--space-3);
+        }
+        
+        .regex-example {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-2);
+            margin: var(--space-2) 0;
+            background: var(--white);
+            border-radius: var(--radius-sm);
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: var(--text-sm);
+        }
+        
+        .url-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 2px solid var(--gray-300);
+            border-radius: var(--radius);
+            padding: var(--space-3);
+            background: var(--white);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: var(--space-4);
+            margin: var(--space-5) 0;
+        }
+        
+        .stat-card {
+            text-align: center;
+            padding: var(--space-4);
+            background: var(--gray-50);
+            border-radius: var(--radius-lg);
+        }
+        
+        .stat-value {
+            font-size: var(--text-2xl);
+            font-weight: 700;
+            color: var(--primary);
+        }
+        
+        .stat-label {
+            font-size: var(--text-sm);
+            color: var(--gray-600);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .filter-section {
+            background: var(--gray-50);
+            padding: var(--space-5);
+            border-radius: var(--radius-lg);
+            margin: var(--space-5) 0;
+        }
+        
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-4);
+        }
+        
+        .progress-section {
+            position: sticky;
+            top: var(--space-4);
+            background: var(--white);
+            padding: var(--space-4);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--gray-200);
+            margin: var(--space-4) 0;
+        }
+        
+        .nav-pills {
+            display: flex;
+            gap: var(--space-2);
+            background: var(--gray-100);
+            padding: var(--space-1);
+            border-radius: var(--radius);
+            margin-bottom: var(--space-5);
+        }
+        
+        .nav-pill {
+            flex: 1;
+            padding: var(--space-2) var(--space-4);
+            border: none;
+            background: transparent;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: var(--text-sm);
+            font-weight: 500;
+        }
+        
+        .nav-pill.active {
+            background: var(--white);
+            box-shadow: var(--shadow-sm);
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="card">
+            <div class="card-header reddit-header">
+                <h1 class="text-center">🎯 Reddit Downloader Pro</h1>
+                <p class="text-center">Enhanced with Regex Support & Bulk Processing</p>
+                <div class="flex justify-center gap-4" style="margin-top: var(--space-4);">
+                    <span class="badge">✨ Regex Patterns</span>
+                    <span class="badge">📊 Advanced Filters</span>
+                    <span class="badge">⚡ Bulk Export</span>
+                    <span class="badge">🎯 Smart Processing</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="nav-pills">
+            <button class="nav-pill active" onclick="switchTab('simple')">🔗 Simple URLs</button>
+            <button class="nav-pill" onclick="switchTab('bulk')">📝 Bulk Input</button>
+            <button class="nav-pill" onclick="switchTab('regex')">🎯 Regex Patterns</button>
+            <button class="nav-pill" onclick="switchTab('filters')">⚙️ Advanced Filters</button>
+        </div>
+
+        <!-- Main Content -->
+        <div class="card">
+            <div class="card-body">
+                <!-- Simple Mode -->
+                <div id="simple-tab" class="tab-content active">
+                    <h3>🔗 Single URL/Subreddit</h3>
+                    <div class="form-group">
+                        <label class="form-label">Reddit URL or Subreddit:</label>
+                        <input type="text" id="simple-url" class="form-input" 
+                               placeholder="r/programming or https://www.reddit.com/r/programming">
+                        <div class="form-help">
+                            Enter a subreddit name (e.g., r/programming) or full Reddit URL
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bulk Mode -->
+                <div id="bulk-tab" class="tab-content hidden">
+                    <h3>📝 Bulk URL Processing</h3>
+                    <div class="form-group">
+                        <label class="form-label">Multiple URLs (one per line):</label>
+                        <textarea id="bulk-urls" class="form-textarea" rows="6" 
+                                  placeholder="r/programming&#10;r/webdev&#10;https://reddit.com/r/javascript&#10;r/python"></textarea>
+                        <div class="form-help">
+                            Enter multiple subreddits or URLs, one per line. Mix and match formats!
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-4">
+                        <button class="btn btn-secondary" onclick="validateBulkUrls()">
+                            🔍 Validate URLs
+                        </button>
+                        <button class="btn btn-info" onclick="loadSampleUrls()">
+                            📝 Load Sample
+                        </button>
+                    </div>
+                    
+                    <div id="url-validation" class="hidden"></div>
+                </div>
+
+                <!-- Regex Mode -->
+                <div id="regex-tab" class="tab-content hidden">
+                    <h3>🎯 Regex Pattern Matching</h3>
+                    
+                    <div class="regex-help">
+                        <h4>🔧 Pattern Examples:</h4>
+                        <div class="regex-examples">
+                            <div class="regex-example">
+                                <code>r\/(tech|programming|webdev)</code>
+                                <span class="text-muted">Tech subreddits</span>
+                            </div>
+                            <div class="regex-example">
+                                <code>r\/.*dev.*</code>
+                                <span class="text-muted">Development related</span>
+                            </div>
+                            <div class="regex-example">
+                                <code>r\/(python|javascript|golang)</code>
+                                <span class="text-muted">Programming languages</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Input Text with URLs:</label>
+                        <textarea id="regex-input" class="form-textarea" rows="6" 
+                                  placeholder="Paste text containing Reddit URLs or subreddit mentions..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Regex Pattern (optional):</label>
+                        <input type="text" id="regex-pattern" class="form-input" 
+                               placeholder="r\/(tech|programming|webdev)">
+                        <div class="form-help">
+                            Leave empty to extract all Reddit URLs/subreddits from the text
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-4">
+                        <button class="btn btn-info" onclick="extractWithRegex()">
+                            🎯 Extract URLs
+                        </button>
+                        <button class="btn btn-secondary" onclick="testRegexPattern()">
+                            🧪 Test Pattern
+                        </button>
+                    </div>
+                    
+                    <div id="regex-results" class="hidden"></div>
+                </div>
+
+                <!-- Filters Mode -->
+                <div id="filters-tab" class="tab-content hidden">
+                    <h3>⚙️ Advanced Filtering Options</h3>
+                    
+                    <div class="filter-section">
+                        <h4>📊 Content Filters</h4>
+                        <div class="filter-grid">
+                            <div class="form-group">
+                                <label class="form-label">Minimum Score:</label>
+                                <input type="number" id="min-score" class="form-input" value="0" min="0">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Maximum Posts:</label>
+                                <select id="post-limit" class="form-select">
+                                    <option value="10">10 posts</option>
+                                    <option value="25" selected>25 posts</option>
+                                    <option value="50">50 posts</option>
+                                    <option value="100">100 posts</option>
+                                    <option value="250">250 posts</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Sort By:</label>
+                                <select id="sort-type" class="form-select">
+                                    <option value="hot">🔥 Hot</option>
+                                    <option value="top">⭐ Top</option>
+                                    <option value="new">🆕 New</option>
+                                    <option value="rising">📈 Rising</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Time Period (for Top):</label>
+                                <select id="time-period" class="form-select">
+                                    <option value="day">Today</option>
+                                    <option value="week" selected>This Week</option>
+                                    <option value="month">This Month</option>
+                                    <option value="year">This Year</option>
+                                    <option value="all">All Time</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <h4 style="margin-top: var(--space-5);">🎯 Post Type Filters</h4>
+                        <div class="grid grid-cols-3 gap-4">
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" id="include-text" checked> Text Posts
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" id="include-links" checked> Link Posts
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" id="include-images" checked> Image Posts
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" id="include-videos" checked> Video Posts
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" id="include-stickied"> Stickied Posts
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" id="exclude-nsfw" checked> Exclude NSFW
+                            </label>
+                        </div>
+                        
+                        <h4 style="margin-top: var(--space-5);">📁 Export Options</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <label class="flex items-center gap-2">
+                                <input type="radio" name="export-format" value="json" checked> JSON Format
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="radio" name="export-format" value="csv"> CSV Format
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="radio" name="export-format" value="markdown"> Markdown
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="radio" name="export-format" value="txt"> Plain Text
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex gap-4" style="margin-top: var(--space-6);">
+                    <button class="btn btn-primary btn-lg" onclick="startDownload()" id="download-btn">
+                        🚀 Start Download
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearAll()">
+                        🗑️ Clear All
+                    </button>
+                    <button class="btn btn-info" onclick="saveSession()">
+                        💾 Save Session
+                    </button>
+                    <button class="btn btn-success" onclick="loadSession()">
+                        📂 Load Session
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Section -->
+        <div id="progress-section" class="progress-section hidden">
+            <h4>📊 Download Progress</h4>
+            <div class="progress" style="margin: var(--space-4) 0;">
+                <div id="progress-bar" class="progress-bar" style="width: 0%"></div>
+            </div>
+            <div id="progress-text" class="text-center text-muted">Ready to start...</div>
+            
+            <div class="stats-grid" style="margin-top: var(--space-5);">
+                <div class="stat-card">
+                    <div id="total-subreddits" class="stat-value">0</div>
+                    <div class="stat-label">Subreddits</div>
+                </div>
+                <div class="stat-card">
+                    <div id="total-posts" class="stat-value">0</div>
+                    <div class="stat-label">Posts Found</div>
+                </div>
+                <div class="stat-card">
+                    <div id="processed-posts" class="stat-value">0</div>
+                    <div class="stat-label">Processed</div>
+                </div>
+                <div class="stat-card">
+                    <div id="download-size" class="stat-value">0 KB</div>
+                    <div class="stat-label">Est. Size</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results-section" class="hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h3>📋 Download Results</h3>
+                </div>
+                <div class="card-body">
+                    <div id="results-content"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 🎯 Global State Management
+        let currentTab = 'simple';
+        let downloadData = [];
+        let isDownloading = false;
+        let downloadStats = {
+            subreddits: 0,
+            totalPosts: 0,
+            processedPosts: 0,
+            downloadSize: 0
+        };
+
+        // 🎨 Tab Management
+        function switchTab(tabName) {
+            // Update navigation
+            document.querySelectorAll('.nav-pill').forEach(pill => pill.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update content
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+            document.getElementById(tabName + '-tab').classList.remove('hidden');
+            
+            currentTab = tabName;
+        }
+
+        // 🔍 URL Validation & Processing
+        function validateBulkUrls() {
+            const urls = document.getElementById('bulk-urls').value.trim().split('\n').filter(u => u.trim());
+            const validationDiv = document.getElementById('url-validation');
+            
+            if (urls.length === 0) {
+                showAlert(validationDiv, 'Please enter some URLs to validate', 'warning');
+                return;
+            }
+            
+            const results = urls.map(url => {
+                const cleaned = cleanRedditUrl(url.trim());
+                const isValid = isValidRedditInput(cleaned);
+                return { original: url, cleaned, isValid };
+            });
+            
+            const validCount = results.filter(r => r.isValid).length;
+            const invalidCount = results.length - validCount;
+            
+            let html = `
+                <div class="alert alert-info">
+                    <strong>Validation Results:</strong> ${validCount} valid, ${invalidCount} invalid URLs
+                </div>
+                <div style="max-height: 200px; overflow-y: auto;">
+            `;
+            
+            results.forEach(result => {
+                const statusClass = result.isValid ? 'text-success' : 'text-danger';
+                const icon = result.isValid ? '✅' : '❌';
+                html += `
+                    <div class="flex justify-between items-center" style="padding: var(--space-2); border-bottom: 1px solid var(--gray-200);">
+                        <span>${result.original}</span>
+                        <span class="${statusClass}">${icon} ${result.cleaned || 'Invalid'}</span>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            validationDiv.innerHTML = html;
+            validationDiv.classList.remove('hidden');
+        }
+
+        // 🎯 Regex Processing
+        function extractWithRegex() {
+            const input = document.getElementById('regex-input').value.trim();
+            const pattern = document.getElementById('regex-pattern').value.trim();
+            const resultsDiv = document.getElementById('regex-results');
+            
+            if (!input) {
+                showAlert(resultsDiv, 'Please enter some text to process', 'warning');
+                return;
+            }
+            
+            try {
+                let urls = [];
+                
+                if (pattern) {
+                    // Use custom regex pattern
+                    const regex = new RegExp(pattern, 'gi');
+                    const matches = input.match(regex) || [];
+                    urls = matches.map(match => cleanRedditUrl(match));
+                } else {
+                    // Extract all Reddit URLs/subreddits
+                    const redditPatterns = [
+                        /r\/[a-zA-Z0-9_]+/g,
+                        /reddit\.com\/r\/[a-zA-Z0-9_]+/g,
+                        /https?:\/\/[www\.]*reddit\.com\/r\/[a-zA-Z0-9_]+/g
+                    ];
+                    
+                    redditPatterns.forEach(regex => {
+                        const matches = input.match(regex) || [];
+                        urls.push(...matches.map(match => cleanRedditUrl(match)));
+                    });
+                }
+                
+                // Remove duplicates
+                urls = [...new Set(urls)].filter(url => isValidRedditInput(url));
+                
+                if (urls.length === 0) {
+                    showAlert(resultsDiv, 'No valid Reddit URLs found', 'warning');
+                    return;
+                }
+                
+                const html = `
+                    <div class="alert alert-success">
+                        <strong>Extracted ${urls.length} unique Reddit URLs!</strong>
+                    </div>
+                    <div class="url-list">
+                        ${urls.map(url => `<div style="padding: var(--space-2); border-bottom: 1px solid var(--gray-200);">${url}</div>`).join('')}
+                    </div>
+                    <button class="btn btn-primary" onclick="useExtractedUrls(${JSON.stringify(urls).replace(/"/g, '&quot;')})">
+                        📝 Use These URLs
+                    </button>
+                `;
+                
+                resultsDiv.innerHTML = html;
+                resultsDiv.classList.remove('hidden');
+                
+            } catch (error) {
+                showAlert(resultsDiv, `Regex error: ${error.message}`, 'danger');
+            }
+        }
+
+        function useExtractedUrls(urls) {
+            document.getElementById('bulk-urls').value = urls.join('\n');
+            switchTab('bulk');
+            document.querySelector('[onclick="switchTab(\'bulk\')"]').classList.add('active');
+            document.querySelector('[onclick="switchTab(\'regex\')"]').classList.remove('active');
+        }
+
+        // 🚀 Main Download Function
+        async function startDownload() {
+            if (isDownloading) return;
+            
+            const urls = getUrlsFromCurrentTab();
+            if (urls.length === 0) {
+                alert('Please enter at least one Reddit URL or subreddit');
+                return;
+            }
+            
+            isDownloading = true;
+            updateDownloadButton(true);
+            showProgressSection();
+            
+            try {
+                downloadStats = { subreddits: urls.length, totalPosts: 0, processedPosts: 0, downloadSize: 0 };
+                updateStats();
+                
+                downloadData = [];
+                
+                for (let i = 0; i < urls.length; i++) {
+                    const url = urls[i];
+                    updateProgress((i / urls.length) * 100, `Processing ${url}...`);
+                    
+                    try {
+                        const posts = await fetchRedditPosts(url);
+                        const filteredPosts = applyFilters(posts);
+                        downloadData.push(...filteredPosts);
+                        
+                        downloadStats.totalPosts += filteredPosts.length;
+                        downloadStats.processedPosts += filteredPosts.length;
+                        downloadStats.downloadSize += estimateSize(filteredPosts);
+                        
+                        updateStats();
+                        
+                    } catch (error) {
+                        console.error(`Error processing ${url}:`, error);
+                        showAlert(document.getElementById('results-section'), 
+                                `Error processing ${url}: ${error.message}`, 'warning');
+                    }
+                    
+                    // Small delay to prevent rate limiting
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+                
+                updateProgress(100, 'Processing complete!');
+                await exportData();
+                showResults();
+                
+            } catch (error) {
+                console.error('Download error:', error);
+                showAlert(document.getElementById('results-section'), 
+                        `Download failed: ${error.message}`, 'danger');
+            } finally {
+                isDownloading = false;
+                updateDownloadButton(false);
+            }
+        }
+
+        // 📊 Reddit API Functions
+        async function fetchRedditPosts(subreddit) {
+            const cleanSub = cleanRedditUrl(subreddit);
+            const limit = document.getElementById('post-limit').value;
+            const sort = document.getElementById('sort-type').value;
+            const timePeriod = document.getElementById('time-period').value;
+            
+            let url = `https://www.reddit.com/r/${cleanSub}/${sort}.json?limit=${limit}`;
+            if (sort === 'top') {
+                url += `&t=${timePeriod}`;
+            }
+            
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch r/${cleanSub}: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            return data.data.children.map(child => child.data);
+        }
+
+        // 🎛️ Filter Functions
+        function applyFilters(posts) {
+            const minScore = parseInt(document.getElementById('min-score').value) || 0;
+            const includeText = document.getElementById('include-text').checked;
+            const includeLinks = document.getElementById('include-links').checked;
+            const includeImages = document.getElementById('include-images').checked;
+            const includeVideos = document.getElementById('include-videos').checked;
+            const includeStickied = document.getElementById('include-stickied').checked;
+            const excludeNsfw = document.getElementById('exclude-nsfw').checked;
+            
+            return posts.filter(post => {
+                // Score filter
+                if (post.score < minScore) return false;
+                
+                // NSFW filter
+                if (excludeNsfw && post.over_18) return false;
+                
+                // Stickied filter
+                if (!includeStickied && post.stickied) return false;
+                
+                // Post type filters
+                const isTextPost = post.is_self;
+                const isImagePost = post.url && (post.url.includes('i.redd.it') || 
+                                               post.url.includes('imgur.com') ||
+                                               /\.(jpg|jpeg|png|gif|webp)$/i.test(post.url));
+                const isVideoPost = post.is_video || (post.url && post.url.includes('v.redd.it'));
+                const isLinkPost = !isTextPost && !isImagePost && !isVideoPost;
+                
+                if (isTextPost && !includeText) return false;
+                if (isLinkPost && !includeLinks) return false;
+                if (isImagePost && !includeImages) return false;
+                if (isVideoPost && !includeVideos) return false;
+                
+                return true;
+            });
+        }
+
+        // 📁 Export Functions
+        async function exportData() {
+            const format = document.querySelector('input[name="export-format"]:checked').value;
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = `reddit_export_${timestamp}`;
+            
+            switch (format) {
+                case 'json':
+                    downloadFile(JSON.stringify(downloadData, null, 2), `${filename}.json`, 'application/json');
+                    break;
+                case 'csv':
+                    const csv = convertToCSV(downloadData);
+                    downloadFile(csv, `${filename}.csv`, 'text/csv');
+                    break;
+                case 'markdown':
+                    const markdown = convertToMarkdown(downloadData);
+                    downloadFile(markdown, `${filename}.md`, 'text/markdown');
+                    break;
+                case 'txt':
+                    const text = convertToText(downloadData);
+                    downloadFile(text, `${filename}.txt`, 'text/plain');
+                    break;
+            }
+        }
+
+        // 🛠️ Utility Functions
+        function cleanRedditUrl(input) {
+            if (!input) return '';
+            
+            // Remove common prefixes and clean up
+            let cleaned = input.trim()
+                .replace(/^https?:\/\/(www\.)?reddit\.com\//, '')
+                .replace(/^r\//, '')
+                .replace(/\/$/, '')
+                .split('?')[0]
+                .split('/')[0];
+            
+            return cleaned;
+        }
+
+        function isValidRedditInput(input) {
+            return /^[a-zA-Z0-9_]+$/.test(input) && input.length > 0;
+        }
+
+        function getUrlsFromCurrentTab() {
+            switch (currentTab) {
+                case 'simple':
+                    const singleUrl = document.getElementById('simple-url').value.trim();
+                    return singleUrl ? [cleanRedditUrl(singleUrl)] : [];
+                
+                case 'bulk':
+                case 'regex':
+                    const bulkUrls = document.getElementById('bulk-urls').value.trim();
+                    return bulkUrls ? bulkUrls.split('\n')
+                        .map(url => cleanRedditUrl(url.trim()))
+                        .filter(url => isValidRedditInput(url)) : [];
+                
+                default:
+                    return [];
+            }
+        }
+
+        function updateProgress(percent, message) {
+            document.getElementById('progress-bar').style.width = `${percent}%`;
+            document.getElementById('progress-text').textContent = message;
+        }
+
+        function updateStats() {
+            document.getElementById('total-subreddits').textContent = downloadStats.subreddits;
+            document.getElementById('total-posts').textContent = downloadStats.totalPosts;
+            document.getElementById('processed-posts').textContent = downloadStats.processedPosts;
+            document.getElementById('download-size').textContent = formatBytes(downloadStats.downloadSize);
+        }
+
+        function showProgressSection() {
+            document.getElementById('progress-section').classList.remove('hidden');
+        }
+
+        function updateDownloadButton(downloading) {
+            const btn = document.getElementById('download-btn');
+            if (downloading) {
+                btn.innerHTML = '<span class="loading"></span> Downloading...';
+                btn.disabled = true;
+            } else {
+                btn.innerHTML = '🚀 Start Download';
+                btn.disabled = false;
+            }
+        }
+
+        function showAlert(container, message, type = 'info') {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.innerHTML = message;
+            container.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
+                }
+            }, 5000);
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function estimateSize(posts) {
+            return posts.length * 2048; // Rough estimate: 2KB per post
+        }
+
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function convertToCSV(data) {
+            if (data.length === 0) return '';
+            
+            const headers = ['Title', 'Author', 'Score', 'Comments', 'URL', 'Subreddit', 'Created', 'Content'];
+            const rows = data.map(post => [
+                `"${(post.title || '').replace(/"/g, '""')}"`,
+                post.author || '',
+                post.score || 0,
+                post.num_comments || 0,
+                `"https://reddit.com${post.permalink}"`,
+                post.subreddit || '',
+                new Date(post.created_utc * 1000).toISOString(),
+                `"${(post.selftext || '').replace(/"/g, '""').substring(0, 200)}"`
+            ]);
+            
+            return [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+        }
+
+        function convertToMarkdown(data) {
+            let markdown = `# Reddit Export\n\nGenerated on ${new Date().toLocaleString()}\n\n`;
+            markdown += `Total posts: ${data.length}\n\n---\n\n`;
+            
+            data.forEach((post, index) => {
+                markdown += `## ${index + 1}. ${post.title}\n\n`;
+                markdown += `**Author:** u/${post.author} | `;
+                markdown += `**Score:** ${post.score} | `;
+                markdown += `**Comments:** ${post.num_comments}\n\n`;
+                markdown += `**Subreddit:** r/${post.subreddit}\n\n`;
+                markdown += `**URL:** [View on Reddit](https://reddit.com${post.permalink})\n\n`;
+                
+                if (post.selftext) {
+                    markdown += `**Content:**\n${post.selftext.substring(0, 500)}${post.selftext.length > 500 ? '...' : ''}\n\n`;
+                }
+                
+                markdown += '---\n\n';
+            });
+            
+            return markdown;
+        }
+
+        function convertToText(data) {
+            let text = `Reddit Export\nGenerated on ${new Date().toLocaleString()}\nTotal posts: ${data.length}\n\n`;
+            text += '='.repeat(60) + '\n\n';
+            
+            data.forEach((post, index) => {
+                text += `${index + 1}. ${post.title}\n`;
+                text += `Author: u/${post.author} | Score: ${post.score} | Comments: ${post.num_comments}\n`;
+                text += `Subreddit: r/${post.subreddit}\n`;
+                text += `URL: https://reddit.com${post.permalink}\n`;
+                
+                if (post.selftext) {
+                    text += `Content: ${post.selftext.substring(0, 300)}${post.selftext.length > 300 ? '...' : ''}\n`;
+                }
+                
+                text += '\n' + '-'.repeat(40) + '\n\n';
+            });
+            
+            return text;
+        }
+
+        function showResults() {
+            const resultsSection = document.getElementById('results-section');
+            const resultsContent = document.getElementById('results-content');
+            
+            let html = `
+                <div class="alert alert-success">
+                    <strong>Download Complete!</strong> Successfully processed ${downloadStats.totalPosts} posts from ${downloadStats.subreddits} subreddits.
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">${downloadStats.subreddits}</div>
+                        <div class="stat-label">Subreddits Processed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${downloadStats.totalPosts}</div>
+                        <div class="stat-label">Total Posts</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${formatBytes(downloadStats.downloadSize)}</div>
+                        <div class="stat-label">Estimated Size</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${document.querySelector('input[name="export-format"]:checked').value.toUpperCase()}</div>
+                        <div class="stat-label">Export Format</div>
+                    </div>
+                </div>
+                
+                <h4>📋 Sample Results Preview:</h4>
+                <div style="max-height: 400px; overflow-y: auto;">
+            `;
+            
+            downloadData.slice(0, 5).forEach(post => {
+                html += `
+                    <div class="reddit-post">
+                        <div class="post-header">
+                            <div class="post-title">${post.title}</div>
+                            <span class="badge badge-primary">${post.score} points</span>
+                        </div>
+                        <div class="post-meta">
+                            <span>👤 u/${post.author}</span>
+                            <span>📍 r/${post.subreddit}</span>
+                            <span>💬 ${post.num_comments} comments</span>
+                            <span>📅 ${new Date(post.created_utc * 1000).toLocaleDateString()}</span>
+                        </div>
+                        ${post.selftext ? `<div class="post-content">${post.selftext.substring(0, 200)}${post.selftext.length > 200 ? '...' : ''}</div>` : ''}
+                        <a href="https://reddit.com${post.permalink}" target="_blank" class="btn btn-sm btn-info">View on Reddit</a>
+                    </div>
+                `;
+            });
+            
+            if (downloadData.length > 5) {
+                html += `<div class="text-center text-muted">... and ${downloadData.length - 5} more posts</div>`;
+            }
+            
+            html += '</div>';
+            
+            resultsContent.innerHTML = html;
+            resultsSection.classList.remove('hidden');
+        }
+
+        // 💾 Session Management
+        function saveSession() {
+            const session = {
+                currentTab,
+                simpleUrl: document.getElementById('simple-url').value,
+                bulkUrls: document.getElementById('bulk-urls').value,
+                regexInput: document.getElementById('regex-input').value,
+                regexPattern: document.getElementById('regex-pattern').value,
+                filters: {
+                    minScore: document.getElementById('min-score').value,
+                    postLimit: document.getElementById('post-limit').value,
+                    sortType: document.getElementById('sort-type').value,
+                    timePeriod: document.getElementById('time-period').value,
+                    includeText: document.getElementById('include-text').checked,
+                    includeLinks: document.getElementById('include-links').checked,
+                    includeImages: document.getElementById('include-images').checked,
+                    includeVideos: document.getElementById('include-videos').checked,
+                    includeStickied: document.getElementById('include-stickied').checked,
+                    excludeNsfw: document.getElementById('exclude-nsfw').checked,
+                    exportFormat: document.querySelector('input[name="export-format"]:checked').value
+                }
+            };
+            
+            localStorage.setItem('redditDownloaderSession', JSON.stringify(session));
+            alert('Session saved successfully!');
+        }
+
+        function loadSession() {
+            const sessionData = localStorage.getItem('redditDownloaderSession');
+            if (!sessionData) {
+                alert('No saved session found!');
+                return;
+            }
+            
+            try {
+                const session = JSON.parse(sessionData);
+                
+                // Restore form values
+                document.getElementById('simple-url').value = session.simpleUrl || '';
+                document.getElementById('bulk-urls').value = session.bulkUrls || '';
+                document.getElementById('regex-input').value = session.regexInput || '';
+                document.getElementById('regex-pattern').value = session.regexPattern || '';
+                
+                if (session.filters) {
+                    document.getElementById('min-score').value = session.filters.minScore || 0;
+                    document.getElementById('post-limit').value = session.filters.postLimit || 25;
+                    document.getElementById('sort-type').value = session.filters.sortType || 'hot';
+                    document.getElementById('time-period').value = session.filters.timePeriod || 'week';
+                    document.getElementById('include-text').checked = session.filters.includeText !== false;
+                    document.getElementById('include-links').checked = session.filters.includeLinks !== false;
+                    document.getElementById('include-images').checked = session.filters.includeImages !== false;
+                    document.getElementById('include-videos').checked = session.filters.includeVideos !== false;
+                    document.getElementById('include-stickied').checked = session.filters.includeStickied || false;
+                    document.getElementById('exclude-nsfw').checked = session.filters.excludeNsfw !== false;
+                    
+                    // Restore export format
+                    const formatRadio = document.querySelector(`input[name="export-format"][value="${session.filters.exportFormat || 'json'}"]`);
+                    if (formatRadio) formatRadio.checked = true;
+                }
+                
+                alert('Session loaded successfully!');
+                
+            } catch (error) {
+                alert('Error loading session: ' + error.message);
+            }
+        }
+
+        // 🔧 Additional Utility Functions
+        function clearAll() {
+            document.getElementById('simple-url').value = '';
+            document.getElementById('bulk-urls').value = '';
+            document.getElementById('regex-input').value = '';
+            document.getElementById('regex-pattern').value = '';
+            document.getElementById('url-validation').classList.add('hidden');
+            document.getElementById('regex-results').classList.add('hidden');
+            document.getElementById('progress-section').classList.add('hidden');
+            document.getElementById('results-section').classList.add('hidden');
+        }
+
+        function loadSampleUrls() {
+            const sampleUrls = [
+                'r/programming',
+                'r/webdev',
+                'r/javascript',
+                'r/python',
+                'r/MachineLearning',
+                'https://reddit.com/r/technology',
+                'r/startups',
+                'r/entrepreneur'
+            ].join('\n');
+            
+            document.getElementById('bulk-urls').value = sampleUrls;
+        }
+
+        function testRegexPattern() {
+            const pattern = document.getElementById('regex-pattern').value.trim();
+            const input = document.getElementById('regex-input').value.trim();
+            
+            if (!pattern || !input) {
+                alert('Please enter both a pattern and some text to test');
+                return;
+            }
+            
+            try {
+                const regex = new RegExp(pattern, 'gi');
+                const matches = input.match(regex) || [];
+                alert(`Pattern matched ${matches.length} times:\n\n${matches.join('\n')}`);
+            } catch (error) {
+                alert(`Invalid regex pattern: ${error.message}`);
+            }
+        }
+
+        // 🚀 Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load any saved session on startup
+            const savedSession = localStorage.getItem('redditDownloaderSession');
+            if (savedSession) {
+                console.log('Previous session detected. Use "Load Session" to restore.');
+            }
+        });
+    </script>
+</body>
+</html> 
