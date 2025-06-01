@@ -436,12 +436,19 @@
     </div>
 
     <script>
-        // Enhanced Reddit Content Downloader
+        // Enhanced Reddit Content Downloader with Improved Rate Limiting
         class RedditDownloader {
             constructor() {
                 this.cache = new Map();
                 this.apiAttempts = 0;
                 this.maxRetries = 3;
+                this.rateLimitDelay = 1000; // 1 second between requests
+                this.lastRequestTime = 0;
+                
+                // Reddit rate limits: 60 requests per minute for unauthenticated
+                this.requestsPerMinute = 60;
+                this.requestQueue = [];
+                this.processingQueue = false;
             }
 
             async downloadContent(url, options) {
@@ -449,7 +456,7 @@
                     this.updateProgress(10, 'Validating Reddit URL...');
                     
                     if (!this.isValidRedditUrl(url)) {
-                        throw new Error('Please enter a valid Reddit URL');
+                        throw new Error('Please enter a valid Reddit URL (e.g., https://www.reddit.com/r/subreddit/comments/...)');
                     }
 
                     this.updateProgress(25, 'Fetching Reddit data...');
@@ -473,58 +480,111 @@
             isValidRedditUrl(url) {
                 try {
                     const urlObj = new URL(url);
-                    return urlObj.hostname.includes('reddit.com');
+                    const isReddit = urlObj.hostname.includes('reddit.com');
+                    const hasComments = url.includes('/comments/');
+                    return isReddit && hasComments;
                 } catch {
                     return false;
                 }
             }
 
             async fetchRedditData(url, options) {
+                // Rate limiting
+                await this.enforceRateLimit();
+                
                 const strategies = [
                     () => this.fetchWithJsonApi(url, options),
                     () => this.fetchWithOldReddit(url, options),
-                    () => this.fetchWithCorsProxy(url, options)
+                    () => this.fetchWithCorsProxy(url, options),
+                    () => this.fetchWithPushshift(url, options) // Backup for deleted content
                 ];
 
+                let lastError = null;
+                
                 for (let i = 0; i < strategies.length; i++) {
                     try {
                         this.updateProgress(25 + (i * 8), `Trying fetch strategy ${i + 1}...`);
                         const data = await strategies[i]();
-                        if (data) return data;
+                        if (data && this.isValidRedditData(data)) {
+                            console.log(`✅ Strategy ${i + 1} succeeded`);
+                            return data;
+                        }
                     } catch (error) {
-                        console.warn(`Strategy ${i + 1} failed:`, error.message);
-                        if (i === strategies.length - 1) throw error;
+                        console.warn(`❌ Strategy ${i + 1} failed:`, error.message);
+                        lastError = error;
+                        
+                        // Wait before trying next strategy
+                        if (i < strategies.length - 1) {
+                            await this.sleep(500);
+                        }
                     }
                 }
                 
-                throw new Error('All fetch strategies failed');
+                throw new Error(`All fetch strategies failed. Last error: ${lastError?.message || 'Unknown error'}`);
+            }
+
+            async enforceRateLimit() {
+                const now = Date.now();
+                const timeSinceLastRequest = now - this.lastRequestTime;
+                
+                if (timeSinceLastRequest < this.rateLimitDelay) {
+                    const waitTime = this.rateLimitDelay - timeSinceLastRequest;
+                    console.log(`⏰ Rate limiting: waiting ${waitTime}ms`);
+                    await this.sleep(waitTime);
+                }
+                
+                this.lastRequestTime = Date.now();
+            }
+
+            async sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
+            isValidRedditData(data) {
+                return data && 
+                       Array.isArray(data) && 
+                       data.length > 0 && 
+                       data[0]?.data?.children?.length > 0;
             }
 
             async fetchWithJsonApi(url, options) {
                 let jsonUrl = url.replace(/\/$/, '') + '.json';
                 
-                // Add query parameters
+                // Enhanced query parameters for better Reddit API compatibility
                 const params = new URLSearchParams();
-                if (options.maxComments > 0) {
-                    params.append('limit', options.maxComments.toString());
-                }
                 params.append('raw_json', '1');
+                params.append('api_type', 'json');
+                
+                if (options.maxComments > 0 && options.maxComments !== 999999) {
+                    params.append('limit', Math.min(options.maxComments, 500).toString());
+                }
                 
                 if (params.toString()) {
                     jsonUrl += (jsonUrl.includes('?') ? '&' : '?') + params.toString();
                 }
 
-                console.log('Fetching from:', jsonUrl);
+                console.log('🔗 Fetching from Reddit JSON API:', jsonUrl);
                 
                 const response = await fetch(jsonUrl, {
                     method: 'GET',
                     headers: {
-                        'User-Agent': 'Mozilla/5.0 (compatible; RedditDownloader/1.0)',
-                        'Accept': 'application/json'
-                    }
+                        'User-Agent': 'Mozilla/5.0 (compatible; RedditDownloader/2.0; Educational/Research)',
+                        'Accept': 'application/json, text/plain, */*',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    },
+                    cache: 'no-cache'
                 });
 
                 if (!response.ok) {
+                    if (response.status === 429) {
+                        throw new Error('Rate limited by Reddit. Please wait a moment and try again.');
+                    } else if (response.status === 403) {
+                        throw new Error('Access forbidden. This may be a private subreddit or the post was deleted.');
+                    } else if (response.status === 404) {
+                        throw new Error('Reddit post not found. Please check the URL.');
+                    }
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
 
@@ -538,32 +598,104 @@
             }
 
             async fetchWithOldReddit(url, options) {
-                const oldRedditUrl = url.replace('www.reddit.com', 'old.reddit.com').replace(/\/$/, '') + '.json';
+                const oldRedditUrl = url.replace('www.reddit.com', 'old.reddit.com')
+                                      .replace('reddit.com', 'old.reddit.com')
+                                      .replace(/\/$/, '') + '.json';
+                
+                console.log('🔗 Fetching from Old Reddit:', oldRedditUrl);
                 
                 const response = await fetch(oldRedditUrl, {
                     headers: {
-                        'User-Agent': 'Mozilla/5.0 (compatible; RedditDownloader/1.0)',
-                        'Accept': 'application/json'
+                        'User-Agent': 'Mozilla/5.0 (compatible; RedditDownloader/2.0)',
+                        'Accept': 'application/json',
+                        'Referer': 'https://old.reddit.com/'
                     }
                 });
 
                 if (!response.ok) {
-                    throw new Error(`Old Reddit API failed: ${response.status}`);
+                    throw new Error(`Old Reddit API failed: ${response.status} ${response.statusText}`);
                 }
 
                 return await response.json();
             }
 
             async fetchWithCorsProxy(url, options) {
-                // Fallback using public CORS proxy
-                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url + '.json')}`;
+                // Enhanced CORS proxy with multiple fallbacks
+                const proxies = [
+                    'https://api.allorigins.win/raw?url=',
+                    'https://corsproxy.io/?',
+                    'https://cors-anywhere.herokuapp.com/'
+                ];
                 
-                const response = await fetch(proxyUrl);
-                if (!response.ok) {
-                    throw new Error(`Proxy fetch failed: ${response.status}`);
+                const jsonUrl = url + '.json';
+                
+                for (const proxy of proxies) {
+                    try {
+                        const proxyUrl = proxy + encodeURIComponent(jsonUrl);
+                        console.log('🔗 Trying CORS proxy:', proxy);
+                        
+                        const response = await fetch(proxyUrl, {
+                            headers: {
+                                'User-Agent': 'Mozilla/5.0 (compatible; RedditDownloader/2.0)',
+                                'Accept': 'application/json'
+                            }
+                        });
+                        
+                        if (!response.ok) continue;
+                        
+                        const data = await response.json();
+                        if (this.isValidRedditData(data)) {
+                            return data;
+                        }
+                    } catch (error) {
+                        console.warn(`CORS proxy ${proxy} failed:`, error.message);
+                    }
                 }
+                
+                throw new Error('All CORS proxies failed');
+            }
 
-                return await response.json();
+            async fetchWithPushshift(url, options) {
+                // Fallback for deleted/archived content using Pushshift API
+                try {
+                    const postId = this.extractPostId(url);
+                    if (!postId) throw new Error('Could not extract post ID');
+                    
+                    const pushshiftUrl = `https://api.pushshift.io/reddit/submission/search/?ids=${postId}`;
+                    console.log('🔗 Trying Pushshift API for archived content');
+                    
+                    const response = await fetch(pushshiftUrl);
+                    if (!response.ok) throw new Error('Pushshift API failed');
+                    
+                    const data = await response.json();
+                    if (data.data && data.data.length > 0) {
+                        // Convert Pushshift format to Reddit format
+                        return this.convertPushshiftToRedditFormat(data.data[0]);
+                    }
+                    
+                    throw new Error('No data from Pushshift');
+                } catch (error) {
+                    throw new Error(`Pushshift fallback failed: ${error.message}`);
+                }
+            }
+
+            extractPostId(url) {
+                const match = url.match(/\/comments\/([a-zA-Z0-9]+)/);
+                return match ? match[1] : null;
+            }
+
+            convertPushshiftToRedditFormat(pushshiftData) {
+                return [{
+                    data: {
+                        children: [{
+                            data: {
+                                ...pushshiftData,
+                                selftext: pushshiftData.selftext || '[Deleted]',
+                                title: pushshiftData.title || '[Deleted Post]'
+                            }
+                        }]
+                    }
+                }];
             }
 
             async processRedditData(data, options) {
@@ -579,15 +711,17 @@
                     if (Array.isArray(data) && data.length > 0) {
                         // Process post data
                         const postListing = data[0];
-                        if (postListing.data && postListing.data.children[0]) {
+                        if (postListing?.data?.children?.[0]) {
                             const postData = postListing.data.children[0].data;
                             result.post = this.extractPostData(postData, options);
+                        } else {
+                            throw new Error('Invalid post data structure');
                         }
 
                         // Process comments
                         if (data.length > 1 && options.includeComments) {
                             const commentsListing = data[1];
-                            if (commentsListing.data && commentsListing.data.children) {
+                            if (commentsListing?.data?.children) {
                                 result.comments = this.extractComments(commentsListing.data.children, options);
                                 result.stats.totalComments = result.comments.length;
                                 result.stats.totalScore = result.comments.reduce((sum, c) => sum + (c.score || 0), 0);
@@ -603,6 +737,8 @@
                         if (options.includeImages && result.post) {
                             result.images = this.extractImages(result.post);
                         }
+                    } else {
+                        throw new Error('No valid data structure received from Reddit');
                     }
                 } catch (error) {
                     console.error('Error processing Reddit data:', error);
@@ -615,28 +751,28 @@
             extractPostData(postData, options) {
                 const post = {
                     id: postData.id,
-                    title: postData.title,
-                    selftext: postData.selftext,
+                    title: postData.title || '[No Title]',
+                    selftext: postData.selftext || '',
                     url: postData.url,
                     permalink: `https://reddit.com${postData.permalink}`,
-                    subreddit: postData.subreddit,
-                    domain: postData.domain
+                    subreddit: postData.subreddit || 'unknown',
+                    domain: postData.domain || 'reddit.com'
                 };
 
                 if (options.includeAuthor) {
-                    post.author = postData.author;
+                    post.author = postData.author || '[deleted]';
                     post.author_flair_text = postData.author_flair_text;
                 }
 
                 if (options.includeTimestamps) {
                     post.created_utc = postData.created_utc;
-                    post.created = new Date(postData.created_utc * 1000).toISOString();
+                    post.created = postData.created_utc ? new Date(postData.created_utc * 1000).toISOString() : null;
                 }
 
                 if (options.includeScores) {
-                    post.score = postData.score;
-                    post.upvote_ratio = postData.upvote_ratio;
-                    post.num_comments = postData.num_comments;
+                    post.score = postData.score || 0;
+                    post.upvote_ratio = postData.upvote_ratio || 0;
+                    post.num_comments = postData.num_comments || 0;
                 }
 
                 return post;
@@ -646,32 +782,38 @@
                 const comments = [];
 
                 for (const child of commentChildren) {
-                    if (child.kind === 't1' && child.data && child.data.body) {
+                    if (child.kind === 't1' && child.data) {
+                        // Skip deleted/removed comments unless they have replies
+                        if (!child.data.body && !child.data.replies) continue;
+                        
                         const comment = {
                             id: child.data.id,
-                            body: child.data.body,
+                            body: child.data.body || '[deleted]',
                             level: level
                         };
 
                         if (options.includeAuthor) {
-                            comment.author = child.data.author;
+                            comment.author = child.data.author || '[deleted]';
                             comment.author_flair_text = child.data.author_flair_text;
                         }
 
                         if (options.includeTimestamps) {
                             comment.created_utc = child.data.created_utc;
-                            comment.created = new Date(child.data.created_utc * 1000).toISOString();
+                            comment.created = child.data.created_utc ? new Date(child.data.created_utc * 1000).toISOString() : null;
                         }
 
                         if (options.includeScores) {
-                            comment.score = child.data.score;
-                            comment.controversiality = child.data.controversiality;
+                            comment.score = child.data.score || 0;
+                            comment.controversiality = child.data.controversiality || 0;
                         }
 
                         comments.push(comment);
 
-                        // Process replies recursively
-                        if (child.data.replies && child.data.replies.data && child.data.replies.data.children) {
+                        // Process replies recursively with depth limit
+                        if (child.data.replies && 
+                            child.data.replies.data && 
+                            child.data.replies.data.children && 
+                            level < 10) { // Prevent infinite recursion
                             const replies = this.extractComments(child.data.replies.data.children, options, level + 1);
                             comments.push(...replies);
                         }
@@ -687,8 +829,10 @@
                     post_id: post?.id,
                     subreddit: post?.subreddit,
                     total_comments: comments.length,
-                    comment_levels: Math.max(...comments.map(c => c.level), 0),
-                    extraction_version: '2.0'
+                    comment_levels: comments.length > 0 ? Math.max(...comments.map(c => c.level), 0) : 0,
+                    extraction_version: '2.1',
+                    api_rate_limited: false,
+                    extraction_method: 'reddit_json_api'
                 };
             }
 
@@ -704,12 +848,24 @@
                     });
                 }
 
+                // Check for Reddit gallery
+                if (post.url && post.url.includes('reddit.com/gallery/')) {
+                    images.push({
+                        url: post.url,
+                        type: 'reddit_gallery',
+                        source: 'reddit'
+                    });
+                }
+
                 return images;
             }
 
             isImageUrl(url) {
-                const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
-                return imageExtensions.some(ext => url.toLowerCase().includes(ext));
+                const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp'];
+                const imageDomains = ['i.imgur.com', 'i.redd.it', 'preview.redd.it'];
+                
+                return imageExtensions.some(ext => url.toLowerCase().includes(ext)) ||
+                       imageDomains.some(domain => url.includes(domain));
             }
 
             async formatResult(processedData, originalUrl, options) {
@@ -717,7 +873,8 @@
                     ...processedData,
                     original_url: originalUrl,
                     options_used: options,
-                    success: true
+                    success: true,
+                    extracted_at: new Date().toISOString()
                 };
             }
 
