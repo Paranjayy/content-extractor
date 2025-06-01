@@ -5,7 +5,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Frontend URL Debug Test</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        /* Navigation Button Styles */
+        .nav-btn {
+            text-decoration: none;
+            font-size: 14px;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .nav-btn.primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .nav-btn.secondary {
+            background: linear-gradient(45deg, #6b7280, #374151);
+            color: white;
+        }
+
+        .nav-btn.success {
+            background: linear-gradient(45deg, #10b981, #059669);
+            color: white;
+        }
+
+        .nav-btn.reddit {
+            background: linear-gradient(45deg, #ff4500, #ff6b35);
+            color: white;
+        }
+
+        .nav-btn.current {
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
         .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
         .success { background: #d4edda; border: 1px solid #c3e6cb; }
         .error { background: #f8d7da; border: 1px solid #f5c6cb; }
@@ -18,16 +64,11 @@
     <p>This page tests URL extraction directly without any cache or UI interference.</p>
     
     <!-- Navigation Links -->
-    <div class="nav-links" style="margin: 20px 0; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
-        <a href="/" style="text-decoration: none; padding: 8px 16px; background: #667eea; color: white; border-radius: 6px; font-size: 14px;">
-            🎬 Full YouTube App
-        </a>
-        <a href="/simple_extractor.html" style="text-decoration: none; padding: 8px 16px; background: #10b981; color: white; border-radius: 6px; font-size: 14px;">
-            🔗 Simple URL Extractor
-        </a>
-        <a href="/debug_frontend.html" style="text-decoration: none; padding: 8px 16px; background: #6b7280; color: white; border-radius: 6px; font-size: 14px;">
-            🔧 Debug Tools (Current)
-        </a>
+    <div class="nav-links" style="margin-top: 20px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+        <a href="/" class="nav-btn primary">🎬 Full YouTube App</a>
+        <a href="/debug_frontend.html" class="nav-btn current">🔧 Debug Tools (Current)</a>
+        <a href="/simple_extractor.html" class="nav-btn success">🔗 Simple URL Extractor</a>
+        <a href="/reddit_downloader.html" class="nav-btn reddit">🔴 Reddit Downloader</a>
     </div>
     
     <button onclick="testAllUrls()">🧪 Test All URLs</button>

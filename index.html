@@ -906,6 +906,49 @@
             outline: none;
             border-color: var(--primary);
         }
+
+        .tabs button:hover {
+            background: linear-gradient(45deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+        }
+
+        /* Navigation Button Styles */
+        .nav-btn {
+            text-decoration: none;
+            font-size: 14px;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .nav-btn.primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .nav-btn.secondary {
+            background: linear-gradient(45deg, #6b7280, #374151);
+            color: white;
+        }
+
+        .nav-btn.success {
+            background: linear-gradient(45deg, #10b981, #059669);
+            color: white;
+        }
+
+        .nav-btn.reddit {
+            background: linear-gradient(45deg, #ff4500, #ff6b35);
+            color: white;
+        }
+
+        .nav-btn.current {
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
     </style>
 </head>
 <body>
@@ -917,15 +960,10 @@
                 
                 <!-- Navigation Links -->
                 <div class="nav-links" style="margin-top: 20px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
-                    <a href="/simple_extractor.html" class="btn btn-info" style="text-decoration: none; font-size: 14px;">
-                        🔗 Simple URL Extractor
-                    </a>
-                    <a href="/debug_frontend.html" class="btn btn-secondary" style="text-decoration: none; font-size: 14px;">
-                        🔧 Debug Tools
-                    </a>
-                    <a href="/" class="btn" style="text-decoration: none; font-size: 14px; background: linear-gradient(145deg, #10b981, #059669);">
-                        🎬 Full YouTube App
-                    </a>
+                    <a href="/" class="nav-btn current">🎬 Full YouTube App (Current)</a>
+                    <a href="/debug_frontend.html" class="nav-btn secondary">🔧 Debug Tools</a>
+                    <a href="/simple_extractor.html" class="nav-btn success">🔗 Simple URL Extractor</a>
+                    <a href="/reddit_downloader.html" class="nav-btn reddit">🔴 Reddit Downloader</a>
                 </div>
                 
                 <!-- Backend Status Indicator -->
