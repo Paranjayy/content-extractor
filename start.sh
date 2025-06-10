@@ -16,7 +16,7 @@ fi
 # Install dependencies if requirements.txt exists
 if [ -f "config/requirements.txt" ]; then
     echo "📦 Installing Python dependencies..."
-    pip install -r config/requirements.txt
+    python3 -m pip install -r config/requirements.txt
     echo ""
 fi
 
@@ -47,10 +47,10 @@ echo ""
 echo "✅ Servers are running!"
 echo "=================================================="
 echo "🌐 Frontend URLs:"
-echo "   • Main YouTube App:     http://localhost:8000/frontend/"
-echo "   • Simple URL Extractor: http://localhost:8000/frontend/simple_extractor.html"
-echo "   • Reddit Downloader:    http://localhost:8000/frontend/reddit_downloader.html"
-echo "   • Debug Tools:          http://localhost:8000/frontend/debug_frontend.html"
+echo "   • Main YouTube App:     http://localhost:8000/"
+echo "   • Simple URL Extractor: http://localhost:8000/simple_extractor.html"
+echo "   • Reddit Downloader:    http://localhost:8000/reddit_downloader.html"
+echo "   • Debug Tools:          http://localhost:8000/debug_frontend.html"
 echo ""
 echo "🔧 Backend API:            http://localhost:5002"
 echo ""
