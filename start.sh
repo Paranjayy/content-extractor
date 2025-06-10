@@ -20,6 +20,13 @@ if [ -f "config/requirements.txt" ]; then
     echo ""
 fi
 
+# Load environment variables from .env if present
+if [ -f ".env" ]; then
+    echo "🔑 Loading environment variables from .env"
+    # shellcheck disable=SC1091
+    source .env
+fi
+
 echo "🚀 Starting servers..."
 echo ""
 

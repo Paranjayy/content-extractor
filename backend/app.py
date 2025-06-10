@@ -8,6 +8,7 @@ import os
 import re
 import json
 import requests
+import xml.etree.ElementTree as ET
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from datetime import datetime
@@ -156,7 +157,7 @@ class TranscriptExtractor:
         return hours * 3600 + minutes * 60 + seconds
 
     def extract_transcript(self, video_id, languages=['en']):
-        """Extract real transcript using youtube-transcript-api - Fixed version"""
+        """Extract real transcript using youtube-transcript-api with fallback to timedtext"""
         try:
             print(f"🔍 Attempting to extract transcript for video: {video_id}")
             
@@ -205,7 +206,24 @@ class TranscriptExtractor:
             except Exception as e:
                 print(f"❌ Failed to fetch any transcript: {e}")
             
-            print("❌ No transcripts could be fetched")
+            print("❌ No transcripts could be fetched via youtube-transcript-api, trying timedtext XML fallback")
+            # Fallback: try raw timedtext XML endpoint that does not require API keys
+            for lang in languages + ['en', 'en-US', 'en-GB']:
+                try:
+                    timedtext_url = f"https://video.google.com/timedtext?lang={lang}&v={video_id}"
+                    resp = requests.get(timedtext_url, timeout=10)
+                    if resp.status_code == 200 and resp.text.strip():
+                        xml_root = ET.fromstring(resp.text)
+                        items = []
+                        for node in xml_root.findall('text'):
+                            start = float(node.attrib.get('start', '0'))
+                            text = node.text or ''
+                            items.append({'start': start, 'text': text})
+                        if items:
+                            print(f"✅ Fallback XML transcript fetched for lang {lang}, lines: {len(items)}")
+                            return items, lang
+                except Exception as e:
+                    print(f"❌ XML fallback failed for lang {lang}: {e}")
             return None, None
             
         except TranscriptsDisabled:
