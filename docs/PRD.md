@@ -1,145 +1,122 @@
-### Product Requirements Document (PRD) — Content Extractor v2
+### Greenfield PRD — Content Extractor (from scratch)
 
-Version: 0.1 (Initial)
+Version: 1.0 (Greenfield)
 
 Owner: Paranjay Khachar
 
-### 1) Problem & Goals
+### Vision
 
-- **Problem**: Current app mixes multiple tools with inconsistent UX, fragile browser-only workarounds, and limited reliability. Local dev works but navigation is confusing (doc root vs nested paths). Extraction flows need stronger error handling, observability, and testing.
-- **Primary Goals**:
-  - **Unify UI/UX** into a single modern app (one entry, consistent navigation/components).
-  - **Harden backend** for transcript and metadata extraction with clear contracts, retries, and observability.
-  - **Improve reliability** across YouTube, Reddit, GitHub, generic URLs with graceful fallbacks.
-  - **Ship testable, CI-verified builds** with automated unit/integration tests.
+Build a clean, modern, reliable web app that extracts: 1) YouTube transcripts (+ metadata), 2) URL metadata (YouTube, Reddit, GitHub, generic), and 3) Bulk processing with exports — with a single cohesive UX and robust server-side APIs. Treat this as a fresh product; do not inherit implementation constraints from the old project.
 
-### 2) Users & Use Cases
+### Success Metrics
 
-- **Researchers/Students**: Quickly pull transcripts/metadata for notes or analysis.
-- **Content creators**: Extract and save references, transcripts, and citation links.
-- **Developers**: Bulk process URLs to audit or archive.
+- P0: 95%+ success on YouTube transcript extraction for public videos with transcripts.
+- P0: 99% successful responses from URL metadata endpoint with graceful fallbacks (never crashes/UI dead-ends).
+- P0: Bulk run of 50 items completes under 3 minutes locally with progress and partial results.
 
-Key use cases:
-- Single YouTube transcript with metadata; export to MD/TXT/CSV/ZIP.
-- Bulk YouTube (list or playlist) extraction with progress and partial successes.
-- URL metadata extraction for GitHub/Reddit/Twitter/X/Generic websites.
+### MVP Scope
 
-### 3) In-Scope (v2)
+- Single-page app with three tabs: YouTube, Bulk/Playlist, URL Metadata.
+- Exports: MD, TXT, CSV, and combined ZIP.
+- Server-side APIs (no browser scraping):
+  - POST `/api/youtube/transcript`
+  - POST `/api/youtube/playlist`
+  - POST `/api/url/metadata`
+  - GET `/api/health`
+- No accounts/auth; no persistence (stateless). All processing is on-demand.
 
-- Single-page frontend (SPA) with tabs for: YouTube, Bulk/Playlist, URL Metadata.
-- Backend API with these stable endpoints (Flask 3.0 OK; can migrate to FastAPI later):
-  - `POST /api/extract` — single YouTube URL → transcript + enhanced metadata.
-  - `POST /api/extract-playlist` — playlist URL → per-video transcripts + metadata (configurable max).
-  - `POST /api/extract-url-metadata` — any URL → title/description/thumbnail/og_data.
-  - `GET /api/health` — health probe.
-- Robust error model and fallbacks, structured logs, request IDs.
-- Strong client validation, progress UI, exports (MD/TXT/CSV/ZIP).
-- Config via `.env`; no secrets in client.
+Out of scope (MVP): social login, history, scheduled jobs, cloud DB, comment scraping for Reddit.
 
-Out of scope (v2): Reddit comment scraping UI, auth/multi-user, scheduling, cloud deploy automation; these can follow.
+### Target Stack (fresh)
 
-### 4) Non-Functional Requirements
+- Frontend: Next.js 14 (App Router) + TypeScript + Tailwind CSS.
+- Backend: FastAPI (Python 3.11+), `httpx`, `youtube-transcript-api`, `beautifulsoup4`, `pydantic`.
+- Packaging: Docker for both web and api. Local dev with `docker compose up`.
+- CI: GitHub Actions (lint, type-check, tests, build). Deploy preview for web (Vercel) and api (Railway/Render).
 
-- **Reliability**: Clear fallbacks; no UI dead-ends; API returns machine-parseable error shapes.
-- **Performance**: Handle **50 URLs** bulk comfortably on a laptop; playlist up to **100 videos** with progress.
-- **Security**: No secrets in browser; CORS limited by config; input validation and URL sanitization.
-- **Observability**: Request ID per call, structured logs (JSON), timing metrics, error counters.
-- **Compatibility**: Python 3.9+, macOS/Linux local dev; deployable on Railway/Render/Vercel+Functions variant later.
+### System Architecture
 
-### 5) Information Architecture & UX (v2)
+- Web (Next.js) serves static UI and calls API.
+- API (FastAPI) exposes 3 endpoints, does all network calls.
+- Optional job runner for bulk (in-process queue + asyncio concurrency; no external broker in MVP).
 
-- Single entry: `index.html` (or React SPA) with top-level tabs:
-  - **YouTube** (single) → URL input → metadata card → transcript view → export actions.
-  - **Bulk/Playlist** → textarea + playlist input → progress + results list (success/error) → export all.
-  - **URL Metadata** → URL input → normalized metadata card → copy markdown/export CSV.
-- Shared components: notifications, progress bar, result cards, export menu.
-- Consistent theming and keyboard actions (Enter to submit).
+### API Contracts
 
-### 6) API Contracts (JSON)
+- POST `/api/youtube/transcript`
+  - req: `{ url: string, preferLanguages?: string[] }`
+  - 200: `{ success: true, videoId: string, metadata: Metadata, transcript: TranscriptLine[], language: string, extractedAt: string }`
+  - 4xx/5xx: `{ success: false, code: ErrorCode, message: string, requestId: string }`
 
-- POST `/api/extract`
-  - req: `{ "url": string }`
-  - 200: `{ success: true, videoId, metadata, transcript: [{start:number,text:string}], transcriptLanguage, extractedAt }`
-  - 4xx/5xx: `{ error: string, code?: string, requestId?: string }`
+- POST `/api/youtube/playlist`
+  - req: `{ url: string, maxVideos?: number (<=100), preferLanguages?: string[] }`
+  - 200: `{ success: true, playlistId: string, total: number, processed: number, results: Array<{ success: boolean, videoId: string, metadata?: Metadata, transcript?: TranscriptLine[], language?: string, message?: string }> }`
 
-- POST `/api/extract-playlist`
-  - req: `{ "url": string, "maxVideos"?: number }`
-  - 200: `{ success: true, playlistId, totalVideos, processedVideos, results: Array<{ success:boolean, videoId, metadata?, transcript?, error? }> }`
+- POST `/api/url/metadata`
+  - req: `{ url: string, includeDescription?: boolean, includeOgData?: boolean }`
+  - 200: `{ success: boolean, url: string, title: string, description: string, domain: string, thumbnail?: string, og?: Record<string,string>, message?: string, extractedAt: string }`
 
-- POST `/api/extract-url-metadata`
-  - req: `{ "url": string, "includeDescription"?: boolean, "includeOgData"?: boolean }`
-  - 200: `{ success: boolean, url, title, description, domain, thumbnail?, ogData?, error?, extractedAt }`
+Types
+- `Metadata`: `{ title: string, channel?: string, thumbnail?: string, views?: number|string, likes?: number|string, comments?: number|string, duration?: number|string, publishDate?: string }`
+- `TranscriptLine`: `{ start: number, text: string }`
+- `ErrorCode`: `"INVALID_URL" | "NO_TRANSCRIPT" | "PLATFORM_LIMIT" | "HTTP_ERROR" | "UNKNOWN"`
 
-- GET `/api/health` → `{ status: "healthy" }`
+### UX Flows (clean slate)
 
-### 7) Data & Error Model
+- YouTube Single: URL → validate → server call → metadata card → transcript list → export buttons.
+- Playlist/Bulk: textarea or playlist URL → queue items → progress bar → per-item cards (success/error) → export all.
+- URL Metadata: URL → server call → normalized card (title/desc/thumb/domain) → copy markdown/export CSV.
 
-- `metadata` (YouTube): `{ title, channel, thumbnail, views?, likes?, comments?, duration?, publishDate?, description? }` with fallbacks (oEmbed, thumbnail via `img.youtube.com`).
-- Error shape: `{ error: string, code: "INVALID_URL" | "NO_TRANSCRIPT" | "PLATFORM_LIMIT" | "HTTP_ERROR" | "UNKNOWN", requestId: string }`.
+### Non‑Functional Requirements
 
-### 8) Architecture (v2)
+- Reliability: defensive parsing, timeouts (10s), retries (exponential backoff), consistent error shapes.
+- Performance: async concurrency (FastAPI + httpx) for playlist/bulk; limit 5–8 concurrent external calls.
+- Security: input sanitization, no secrets on client, configurable CORS, rate-limit per IP (simple token bucket) in API.
+- Observability: requestId on every response; structured JSON logs; timings for external calls.
 
-- Frontend: retain static HTML now; optional Phase-2 React+Vite TypeScript migration with components and state management.
-- Backend: Flask 3.0 + `flask-cors`, `requests`, `youtube-transcript-api`, `python-dotenv`.
-- Config: `.env` for `CORS_ORIGINS`, optional `YOUTUBE_API_KEY`.
-- Logging: per-request UUID, JSON logs to stdout; timing for external calls.
-- Rate limiting: lightweight (e.g., in-memory token bucket per IP) — optional Phase-2.
+### Testing
 
-### 9) Testing Strategy
+- Unit: URL parsers, duration parsing, fallback selection.
+- Integration: endpoint tests with mocked external services; playlist pagination; concurrency caps.
+- E2E: Playwright happy paths for the three tabs against local compose.
 
-- Unit tests: extractors (videoId parsing, duration parsing, metadata fallbacks).
-- Integration: API endpoints with mocked external calls; playlist pagination.
-- UI smoke: Playwright/Cypress for happy paths (single/bulk/metadata) against local servers.
-- Contract tests: verify response shapes and required fields.
+### Repo Layout (new)
 
-### 10) Telemetry & Observability
+```
+content-extractor/
+  apps/
+    web/           # Next.js 14 + TS
+    api/           # FastAPI app
+  packages/
+    ui/            # (optional) shared components
+  infra/
+    docker/        # Dockerfiles, compose
+  docs/
+    PRD.md
+```
 
-- Request timing, external call durations, error counts by code, success ratios.
-- Structured logs: `{ ts, level, requestId, route, durationMs, statusCode, error? }`.
+### Deployment
 
-### 11) Acceptance Criteria
+- Dev: `docker compose up` spins both services at `http://localhost:3000` (web) and `http://localhost:5002` (api).
+- Prod: Web on Vercel (static+SSR), API on Railway/Render (Docker). Environment via `.env`/secrets.
 
-- Entering a valid YouTube URL produces metadata + transcript and allows MD/TXT export.
-- Bulk processing shows progress, partial success, and produces CSV and ZIP exports.
-- URL metadata returns usable title/description/thumbnail on YouTube/Reddit/GitHub/Generic; graceful fallback for X/Twitter.
-- API never returns HTML errors; all errors follow the error model with `requestId`.
-- Start script prints correct URLs; README quick start works on macOS.
+### Milestones
 
-### 12) Milestones & Timeline (suggested)
+- M1: API scaffold + contracts + health + CI — 1 day.
+- M2: YouTube single transcript + metadata — 1–2 days.
+- M3: URL metadata endpoint + UI — 1 day.
+- M4: Bulk/playlist with progress + exports — 2 days.
+- M5: Tests (unit/integration/E2E) + telemetry + docs — 1–2 days.
 
-- M1 — Backend hardening (contracts, errors, logging) — 1–2 days.
-- M2 — Unified UI (single entry, tabs/components) — 2–3 days.
-- M3 — Exports + bulk polish + playlist — 1–2 days.
-- M4 — Tests (unit/integration/UI smoke) + CI — 1–2 days.
-- M5 — Docs + examples + deployment guide — 1 day.
+### Risks
 
-### 13) Risks & Mitigations
+- Platform blocking/anti-bot → rely on official endpoints where possible; clear fallbacks; document limits.
+- Quotas/rate limits → soft concurrency caps; optional API keys via env.
 
-- YouTube/Twitter platform limits → use oEmbed/thumbnail fallbacks; document limitations.
-- CORS/anti-bot issues → shift sensitive extraction server-side; robust error messages.
-- Rate limiting → optional per-IP simple limiter; backoff and retries.
+### Open Questions
 
-### 14) Future Scope (Post v2)
+- Do we need authenticated deployments (multi-user) soon? If yes, plan for JWT + rate limiter backed by Redis in Phase 2.
+- Any must-have export templates beyond MD/TXT/CSV/ZIP?
 
-- React/Vite TypeScript migration.
-- Auth, user history, cloud storage of results.
-- Reddit comments archiving with depth/filters.
-- Queue + background processing for very large playlists.
-- Deployment templates for Railway/Render and GitHub Pages frontend.
-
-### 15) File Map (current → v2 target)
-
-- Frontend entry: `frontend/index.html` (v2 keeps single entry; legacy pages remain accessible).
-- Backend app: `backend/app.py` (keep endpoints, add logging/error model).
-- Start script: `start.sh` (prints correct URLs).
-- Requirements: `config/requirements.txt`.
-
-### 16) CI/CD (initial)
-
-- GitHub Actions: lint + unit/integration tests on PR; build static artifacts and publish GitHub Pages (frontend) on main.
-
----
-
-This PRD is intentionally concise and high-signal to guide v2 implementation. Iterate as features land.
+— This is a ground‑up spec. Build new; don’t port old code.
 
 
