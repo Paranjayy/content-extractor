@@ -176,20 +176,11 @@
         }
 
         .result-thumbnail {
-            max-width: 120px;
-            max-height: 120px;
+            max-width: 100px;
+            max-height: 100px;
             border-radius: 8px;
             float: right;
             margin-left: 15px;
-            cursor: pointer;
-            transition: transform 0.2s;
-            border: 2px solid #e0e0e0;
-            object-fit: cover;
-        }
-
-        .result-thumbnail:hover {
-            transform: scale(1.05);
-            border-color: #667eea;
         }
 
         .markdown-output {
@@ -405,8 +396,8 @@
         }
 
         .result-content {
+            min-width: 0;
             overflow: hidden;
-            min-height: 120px;
         }
 
         .result-title {
@@ -513,79 +504,6 @@
 
         .main-content {
             padding: 0;
-        }
-
-        /* Enhanced image modal */
-        .image-modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.8);
-            cursor: pointer;
-        }
-
-        .image-modal-content {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100%;
-            padding: 20px;
-        }
-
-        .image-modal img {
-            max-width: 90%;
-            max-height: 90%;
-            border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-
-        .image-modal-close {
-            position: absolute;
-            top: 20px;
-            right: 30px;
-            color: white;
-            font-size: 40px;
-            font-weight: bold;
-            cursor: pointer;
-            z-index: 1001;
-        }
-
-        .image-modal-close:hover {
-            color: #ccc;
-        }
-
-        /* Enhanced result display */
-        .result-thumbnail-container {
-            float: right;
-            margin-left: 20px;
-            margin-bottom: 10px;
-            position: relative;
-        }
-
-        .thumbnail-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            transition: opacity 0.2s;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-
-        .result-thumbnail-container:hover .thumbnail-overlay {
-            opacity: 1;
         }
     </style>
 </head>
@@ -958,45 +876,37 @@
 
         function displayResult(metadata, url) {
             const resultsDiv = document.getElementById('results');
-            const resultDiv = document.createElement('div');
-            resultDiv.className = 'result-card';
-            
-            let thumbnailHtml = '';
-            if (metadata.thumbnail) {
-                thumbnailHtml = `
-                    <div class="result-thumbnail-container">
-                        <img src="${metadata.thumbnail}" 
-                             alt="Thumbnail for ${metadata.title}" 
-                             class="result-thumbnail"
-                             onclick="openImageModal('${metadata.thumbnail}', '${metadata.title}')"
-                             onerror="this.parentElement.style.display='none'">
-                        <div class="thumbnail-overlay">🔍 View Full Size</div>
-                    </div>
-                `;
-            }
-            
             const markdown = `[${metadata.title}](${url})`;
             
-            resultDiv.innerHTML = `
-                <div class="result-content">
+            const thumbnailHtml = metadata.thumbnail 
+                ? `<img src="${metadata.thumbnail}" alt="Thumbnail" class="result-thumbnail" onerror="this.style.display='none'">`
+                : '';
+
+            const extraInfo = metadata.extra 
+                ? `<p><strong>⭐ Stars:</strong> ${metadata.extra.stars || 'N/A'} | <strong>💻 Language:</strong> ${metadata.extra.language || 'N/A'}</p>`
+                : '';
+
+            const noteHtml = metadata.note 
+                ? `<div class="note"><strong>📝 Note:</strong> ${metadata.note}</div>`
+                : '';
+
+            resultsDiv.innerHTML = `
+                <div class="result-card">
                     ${thumbnailHtml}
                     <div class="result-title">${metadata.title}</div>
                     <div class="result-meta">
-                        🌐 ${metadata.domain} 
-                        ${metadata.extra?.stars ? `| ⭐ ${metadata.extra.stars} stars` : ''}
-                        ${metadata.extra?.language ? `| 💻 ${metadata.extra.language}` : ''}
+                        <strong>🌐 Domain:</strong> ${metadata.domain}<br>
+                        <strong>📝 Description:</strong> ${metadata.description}
                     </div>
-                    <p>${metadata.description}</p>
-                    ${metadata.note ? `<small style="color: #999; font-style: italic;">${metadata.note}</small>` : ''}
+                    ${extraInfo}
+                    ${noteHtml}
                     <div class="markdown-output">
+                        <strong>📋 Markdown Link:</strong><br>
                         ${markdown}
-                        <button class="copy-btn" onclick="copyToClipboard('${markdown.replace(/'/g, "\\'")}')">📋 Copy Markdown</button>
+                        <button class="copy-btn" onclick="copyToClipboard('${markdown.replace(/'/g, "\\'")}')">📋 Copy</button>
                     </div>
                 </div>
             `;
-            
-            resultsDiv.appendChild(resultDiv);
-            currentResult = { ...metadata, url };
         }
 
         function showError(message) {
@@ -1174,39 +1084,22 @@
         }
 
         function downloadAllAsCSV() {
-            const successfulResults = allExtractedResults.filter(r => r.success);
-            if (successfulResults.length === 0) {
-                alert('No successful extractions to download!');
+            if (allExtractedResults.length === 0) {
+                alert('No results to download!');
                 return;
             }
-            
-            // CSV headers
-            const headers = ['Title', 'URL', 'Domain', 'Description', 'Thumbnail', 'Extracted At'];
-            
-            // Convert data to CSV rows
-            const csvRows = [
-                headers.join(','), // Header row
-                ...successfulResults.map(result => {
-                    const row = [
-                        escapeCSV(result.metadata.title || ''),
-                        escapeCSV(result.url || ''),
-                        escapeCSV(result.metadata.domain || ''),
-                        escapeCSV(result.metadata.description || ''),
-                        escapeCSV(result.metadata.thumbnail || ''),
-                        escapeCSV(new Date().toISOString())
-                    ];
-                    return row.join(',');
-                })
-            ];
-            
-            const csvContent = csvRows.join('\n');
-            const filename = generateSmartFilename({
-                title: 'url_extractions_data',
-                domain: `${successfulResults.length}_urls`
-            }, 'url', 'csv');
-            
-            downloadFile(csvContent, filename, 'text/csv');
-            alert(`Downloaded ${successfulResults.length} URLs as ${filename}!`);
+
+            const header = 'URL,Title,Description,Domain,Status\n';
+            const csvData = allExtractedResults.map(r => {
+                const title = r.metadata.title.replace(/"/g, '""');
+                const description = r.metadata.description.replace(/"/g, '""');
+                const domain = r.metadata.domain || 'unknown';
+                const status = r.success ? 'Success' : 'Failed';
+                return `"${r.url}","${title}","${description}","${domain}","${status}"`;
+            }).join('\n');
+
+            const filename = generateDownloadFilename('csv');
+            downloadFile(header + csvData, filename, 'text/csv');
         }
 
         // Generate meaningful filenames based on content
@@ -1604,44 +1497,6 @@
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }
-
-        // Enhanced image handling functions
-        function openImageModal(imageSrc, altText = '') {
-            const modal = document.getElementById('imageModal');
-            const modalImg = document.getElementById('modalImage');
-            
-            modalImg.src = imageSrc;
-            modalImg.alt = altText;
-            modal.style.display = 'block';
-            
-            // Prevent body scroll
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeImageModal() {
-            const modal = document.getElementById('imageModal');
-            modal.style.display = 'none';
-            
-            // Restore body scroll
-            document.body.style.overflow = 'auto';
-        }
-
-        // Keyboard shortcuts for image modal
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeImageModal();
-            }
-        });
-
-        console.log('🖼️ Enhanced image handling and CSV export loaded');
     </script>
-
-    <!-- Image Modal for Full-Size Preview -->
-    <div id="imageModal" class="image-modal" onclick="closeImageModal()">
-        <span class="image-modal-close" onclick="closeImageModal()">&times;</span>
-        <div class="image-modal-content">
-            <img id="modalImage" src="" alt="Full size image">
-        </div>
-    </div>
 </body>
 </html> 

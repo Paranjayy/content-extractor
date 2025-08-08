@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎬 Media Harvest - Standalone Edition</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            margin: 10px 5px;
+            font-size: 0.9em;
+        }
+        
+        .tool-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .tool-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .tool-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        
+        .tool-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .tool-icon {
+            font-size: 2.5em;
+            margin-right: 15px;
+        }
+        
+        .tool-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .input-group input, .input-group textarea, .input-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .input-group input:focus, .input-group textarea:focus, .input-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .results {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            color: #e74c3c;
+            background: #fdf2f2;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #e74c3c;
+            margin-top: 15px;
+        }
+        
+        .success {
+            color: #27ae60;
+            background: #f1f9f4;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #27ae60;
+            margin-top: 15px;
+        }
+        
+        .transcript-item {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .metadata-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 10px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .reddit-post {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-left: 4px solid #ff4500;
+        }
+        
+        .info-banner {
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        
+        .info-banner strong {
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 Media Harvest</h1>
+            <p>Standalone Edition - Works entirely in your browser!</p>
+            <div class="badge">✨ No Backend Required</div>
+            <div class="badge">🔒 Privacy Focused</div>
+            <div class="badge">⚡ Instant Results</div>
+        </div>
+
+        <div class="info-banner">
+            <strong>🎉 This version works entirely client-side!</strong><br>
+            No servers, no data collection, everything runs in your browser using public APIs.
+        </div>
+
+        <div class="tool-grid">
+            <!-- YouTube Transcript Extractor -->
+            <div class="tool-card">
+                <div class="tool-header">
+                    <div class="tool-icon">📺</div>
+                    <div class="tool-title">YouTube Transcript</div>
+                </div>
+                
+                <div class="input-group">
+                    <label for="youtube-url">YouTube URL or Video ID:</label>
+                    <input type="text" id="youtube-url" placeholder="https://www.youtube.com/watch?v=... or video ID">
+                </div>
+                
+                <div class="input-group">
+                    <label for="api-key">YouTube Data API Key (optional):</label>
+                    <input type="text" id="api-key" placeholder="Get free key from Google Cloud Console">
+                    <small style="color: #666;">For enhanced metadata. <a href="https://developers.google.com/youtube/v3/getting-started" target="_blank">Get API Key</a></small>
+                </div>
+                
+                <button class="btn" onclick="extractYouTubeTranscript()">Extract Transcript</button>
+                
+                <div id="youtube-results"></div>
+            </div>
+
+            <!-- URL Metadata Extractor -->
+            <div class="tool-card">
+                <div class="tool-header">
+                    <div class="tool-icon">🔗</div>
+                    <div class="tool-title">URL Metadata</div>
+                </div>
+                
+                <div class="input-group">
+                    <label for="url-input">Enter URL:</label>
+                    <input type="text" id="url-input" placeholder="https://example.com">
+                </div>
+                
+                <div class="input-group">
+                    <label for="output-format">Output Format:</label>
+                    <select id="output-format">
+                        <option value="markdown">Markdown Link</option>
+                        <option value="json">JSON Metadata</option>
+                        <option value="html">HTML Link</option>
+                    </select>
+                </div>
+                
+                <button class="btn" onclick="extractUrlMetadata()">Extract Metadata</button>
+                
+                <div id="url-results"></div>
+            </div>
+
+            <!-- Reddit Content Extractor -->
+            <div class="tool-card">
+                <div class="tool-header">
+                    <div class="tool-icon">📱</div>
+                    <div class="tool-title">Reddit Extractor</div>
+                </div>
+                
+                <div class="input-group">
+                    <label for="reddit-input">Reddit URL or Subreddit:</label>
+                    <input type="text" id="reddit-input" placeholder="r/programming or full Reddit URL">
+                </div>
+                
+                <div class="input-group">
+                    <label for="reddit-limit">Number of Posts:</label>
+                    <select id="reddit-limit">
+                        <option value="10">10 posts</option>
+                        <option value="25">25 posts</option>
+                        <option value="50">50 posts</option>
+                        <option value="100">100 posts</option>
+                    </select>
+                </div>
+                
+                <button class="btn" onclick="extractRedditContent()">Extract Reddit Content</button>
+                
+                <div id="reddit-results"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // YouTube Transcript Extraction
+        async function extractYouTubeTranscript() {
+            const urlInput = document.getElementById('youtube-url').value.trim();
+            const apiKey = document.getElementById('api-key').value.trim();
+            const resultsDiv = document.getElementById('youtube-results');
+            
+            if (!urlInput) {
+                showError(resultsDiv, 'Please enter a YouTube URL or video ID');
+                return;
+            }
+            
+            const videoId = extractVideoId(urlInput);
+            if (!videoId) {
+                showError(resultsDiv, 'Invalid YouTube URL or video ID');
+                return;
+            }
+            
+            showLoading(resultsDiv, 'Extracting transcript...');
+            
+            try {
+                // Get video metadata using oEmbed (no API key required)
+                const metadata = await getYouTubeMetadata(videoId, apiKey);
+                
+                // Note: Direct transcript extraction requires CORS proxy or browser extension
+                const transcriptWarning = `
+                    <div class="error">
+                        <strong>⚠️ Transcript Extraction Limitation</strong><br>
+                        Due to browser security (CORS), direct transcript extraction requires either:
+                        <ul style="margin: 10px 0; padding-left: 20px;">
+                            <li>A browser extension</li>
+                            <li>Running locally with backend</li>
+                            <li>Using a CORS proxy service</li>
+                        </ul>
+                        <p><strong>Video Information Retrieved:</strong></p>
+                    </div>
+                `;
+                
+                resultsDiv.innerHTML = transcriptWarning + `
+                    <div class="metadata-card">
+                        <h3>${metadata.title}</h3>
+                        <p><strong>Channel:</strong> ${metadata.author_name}</p>
+                        <p><strong>URL:</strong> <a href="${metadata.url}" target="_blank">${metadata.url}</a></p>
+                        <img src="${metadata.thumbnail_url}" alt="Thumbnail" style="max-width: 200px; border-radius: 8px;">
+                        <br><br>
+                        <a href="${metadata.url}" target="_blank" class="btn" style="display: inline-block; text-decoration: none; width: auto;">
+                            Open Video on YouTube
+                        </a>
+                    </div>
+                `;
+                
+            } catch (error) {
+                showError(resultsDiv, `Error: ${error.message}`);
+            }
+        }
+        
+        // URL Metadata Extraction
+        async function extractUrlMetadata() {
+            const url = document.getElementById('url-input').value.trim();
+            const format = document.getElementById('output-format').value;
+            const resultsDiv = document.getElementById('url-results');
+            
+            if (!url) {
+                showError(resultsDiv, 'Please enter a URL');
+                return;
+            }
+            
+            showLoading(resultsDiv, 'Extracting metadata...');
+            
+            try {
+                let metadata;
+                
+                // Check if it's a supported service with oEmbed
+                if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                    metadata = await getYouTubeOEmbed(url);
+                } else if (url.includes('twitter.com') || url.includes('x.com')) {
+                    metadata = await getTwitterOEmbed(url);
+                } else {
+                    // For other URLs, use a CORS proxy or show limitation
+                    throw new Error('Direct metadata extraction is limited by CORS. Supported: YouTube, Twitter (via oEmbed)');
+                }
+                
+                const output = formatMetadata(metadata, format, url);
+                showSuccess(resultsDiv, output);
+                
+            } catch (error) {
+                showError(resultsDiv, `Error: ${error.message}`);
+            }
+        }
+        
+        // Reddit Content Extraction
+        async function extractRedditContent() {
+            const input = document.getElementById('reddit-input').value.trim();
+            const limit = document.getElementById('reddit-limit').value;
+            const resultsDiv = document.getElementById('reddit-results');
+            
+            if (!input) {
+                showError(resultsDiv, 'Please enter a subreddit or Reddit URL');
+                return;
+            }
+            
+            showLoading(resultsDiv, 'Fetching Reddit content...');
+            
+            try {
+                let subreddit = input;
+                
+                // Extract subreddit from URL if provided
+                if (input.includes('reddit.com')) {
+                    const match = input.match(/r\/([^\/\?]+)/);
+                    subreddit = match ? match[1] : input;
+                } else if (input.startsWith('r/')) {
+                    subreddit = input.substring(2);
+                }
+                
+                // Fetch from Reddit JSON API
+                const response = await fetch(`https://www.reddit.com/r/${subreddit}.json?limit=${limit}`);
+                
+                if (!response.ok) {
+                    throw new Error(`Reddit API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const posts = data.data.children;
+                
+                let output = `<h3>📱 r/${subreddit} - ${posts.length} posts</h3>`;
+                
+                posts.forEach((post, index) => {
+                    const p = post.data;
+                    output += `
+                        <div class="reddit-post">
+                            <h4>${p.title}</h4>
+                            <p><strong>Author:</strong> u/${p.author} | <strong>Score:</strong> ${p.score} | <strong>Comments:</strong> ${p.num_comments}</p>
+                            <p><strong>URL:</strong> <a href="https://reddit.com${p.permalink}" target="_blank">https://reddit.com${p.permalink}</a></p>
+                            ${p.selftext ? `<p><strong>Text:</strong> ${p.selftext.substring(0, 200)}${p.selftext.length > 200 ? '...' : ''}</p>` : ''}
+                            ${p.url && !p.url.includes('reddit.com') ? `<p><strong>External Link:</strong> <a href="${p.url}" target="_blank">${p.url}</a></p>` : ''}
+                        </div>
+                    `;
+                });
+                
+                resultsDiv.innerHTML = output;
+                
+            } catch (error) {
+                showError(resultsDiv, `Error: ${error.message}`);
+            }
+        }
+        
+        // Utility Functions
+        function extractVideoId(url) {
+            const patterns = [
+                /(?:v=|\/)([0-9A-Za-z_-]{11}).*/,
+                /(?:embed\/)([0-9A-Za-z_-]{11})/,
+                /(?:watch\?v=|\/)([0-9A-Za-z_-]{11})/
+            ];
+            
+            for (const pattern of patterns) {
+                const match = url.match(pattern);
+                if (match) return match[1];
+            }
+            
+            // Check if it's already a video ID
+            if (url.length === 11 && /^[0-9A-Za-z_-]+$/.test(url)) {
+                return url;
+            }
+            
+            return null;
+        }
+        
+        async function getYouTubeMetadata(videoId, apiKey) {
+            try {
+                // Try oEmbed first (no API key required)
+                const response = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+                if (response.ok) {
+                    const data = await response.json();
+                    data.url = `https://www.youtube.com/watch?v=${videoId}`;
+                    return data;
+                }
+            } catch (error) {
+                console.log('oEmbed failed, trying API...');
+            }
+            
+            // If API key provided, try YouTube Data API
+            if (apiKey) {
+                try {
+                    const response = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${apiKey}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.items && data.items.length > 0) {
+                            const video = data.items[0].snippet;
+                            return {
+                                title: video.title,
+                                author_name: video.channelTitle,
+                                thumbnail_url: video.thumbnails.high.url,
+                                url: `https://www.youtube.com/watch?v=${videoId}`
+                            };
+                        }
+                    }
+                } catch (error) {
+                    console.log('YouTube API failed:', error);
+                }
+            }
+            
+            // Fallback
+            return {
+                title: `YouTube Video (${videoId})`,
+                author_name: 'Unknown Channel',
+                thumbnail_url: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+                url: `https://www.youtube.com/watch?v=${videoId}`
+            };
+        }
+        
+        async function getYouTubeOEmbed(url) {
+            const response = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
+            if (!response.ok) throw new Error('Failed to fetch YouTube metadata');
+            return await response.json();
+        }
+        
+        async function getTwitterOEmbed(url) {
+            // Note: Twitter/X oEmbed requires authentication now, showing limitation
+            throw new Error('Twitter/X metadata extraction requires authentication. Use browser extension or local backend.');
+        }
+        
+        function formatMetadata(metadata, format, originalUrl) {
+            switch (format) {
+                case 'markdown':
+                    return `[${metadata.title}](${originalUrl})`;
+                case 'html':
+                    return `<a href="${originalUrl}">${metadata.title}</a>`;
+                case 'json':
+                default:
+                    return `<pre>${JSON.stringify(metadata, null, 2)}</pre>`;
+            }
+        }
+        
+        function showLoading(element, message) {
+            element.innerHTML = `<div class="loading"></div>${message}`;
+        }
+        
+        function showError(element, message) {
+            element.innerHTML = `<div class="error">${message}</div>`;
+        }
+        
+        function showSuccess(element, content) {
+            element.innerHTML = `<div class="success">${content}</div>`;
+        }
+    </script>
+</body>
+</html> 

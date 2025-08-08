@@ -56,6 +56,7 @@ jobs:
                   .tool-desc { color: #666; }
                   h1 { color: #2c3e50; text-align: center; }
                   .subtitle { text-align: center; color: #7f8c8d; margin-bottom: 40px; }
+                  .highlight { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
               </style>
           </head>
           <body>
@@ -63,19 +64,24 @@ jobs:
               <p class="subtitle">Bulk content extraction and download tools</p>
               
               <div class="tool-grid">
+                  <a href="standalone_extractor.html" class="tool-card highlight">
+                      <div class="tool-title">✨ Standalone Edition (RECOMMENDED)</div>
+                      <div class="tool-desc">Works entirely in your browser! No backend required. Reddit + YouTube metadata extraction.</div>
+                  </a>
+                  
                   <a href="index.html" class="tool-card">
-                      <div class="tool-title">📺 YouTube Transcript Extractor</div>
-                      <div class="tool-desc">Extract transcripts from YouTube videos in bulk</div>
+                      <div class="tool-title">📺 YouTube Transcript Extractor (Full)</div>
+                      <div class="tool-desc">Extract transcripts from YouTube videos in bulk (requires backend)</div>
                   </a>
                   
                   <a href="simple_extractor.html" class="tool-card">
                       <div class="tool-title">🔗 URL to Markdown</div>
-                      <div class="tool-desc">Convert URLs to markdown links with metadata</div>
+                      <div class="tool-desc">Convert URLs to markdown links with metadata (requires backend)</div>
                   </a>
                   
                   <a href="reddit_downloader.html" class="tool-card">
                       <div class="tool-title">📱 Reddit Downloader</div>
-                      <div class="tool-desc">Bulk download Reddit content and media</div>
+                      <div class="tool-desc">Bulk download Reddit content and media (requires backend)</div>
                   </a>
                   
                   <a href="debug_frontend.html" class="tool-card">
@@ -85,7 +91,8 @@ jobs:
               </div>
               
               <p style="text-align: center; margin-top: 40px; color: #888;">
-                  <strong>Note:</strong> For full functionality, you'll need to run the backend server locally or deploy it separately.
+                  <strong>💡 Try the Standalone Edition first!</strong> It works immediately without any setup.
+                  <br>For full transcript extraction, you'll need to run the backend server locally.
               </p>
           </body>
           </html>
