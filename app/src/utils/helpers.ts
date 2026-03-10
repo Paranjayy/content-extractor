@@ -1,6 +1,7 @@
 import type { TranscriptEntry, VideoData, TranscriptParagraph, AppSettings } from '../types';
 
-const YOUTUBE_API_KEY = 'AIzaSyAV_j5IsZlkXNtkadQ7HQiocTYysm9kvH0';
+// Public demo API key - override via Settings > YouTube Data API > Custom API Key
+const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY || 'AIzaSyAV_j5IsZlkXNtkadQ7HQiocTYysm9kvH0';
 const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3';
 
 export function extractVideoId(url: string): string | null {

@@ -1,73 +1,78 @@
-# React + TypeScript + Vite
+# Content Extractor Pro — React App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern React + Vite + Tailwind CSS frontend for the Content Extractor Pro backend.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### YouTube Transcript Extractor
+- **Single Video** — Extract transcript from any YouTube URL with metadata (views, likes, comments, duration)
+- **Bulk Videos** — Process multiple URLs at once with progress tracking and filter controls
+- **Playlist** — Extract entire YouTube playlists
+- **Export** — ZIP, CSV, JSON bulk export
+- **History** — Session transcript history with collapsible transcript viewer
+- **Settings** — API key, display options, backend configuration
 
-## React Compiler
+### URL to Markdown Converter
+- **Single URL** — Convert any URL to a formatted Markdown link with metadata
+- **Bulk URLs** — Process multiple URLs with rate limiting and progress
+- **Extract from Text** — Auto-detect URLs in pasted text
+- **History** — Session conversion history
+- **Settings** — Format, rate limiting, retry options
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech Stack
 
-## Expanding the ESLint configuration
+- **React 19** + **TypeScript**
+- **Vite 7** (build tool)
+- **Tailwind CSS v4** (utility-first styling)
+- **Framer Motion** (animations & transitions)
+- **Lucide React** (icons)
+- **React Hot Toast** (notifications)
+- **JSZip** (client-side ZIP generation)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Getting Started
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+cd app
+npm install
+npm run dev      # Dev server with hot reload on http://localhost:5173
+npm run build    # Production build to dist/
+npm run preview  # Preview production build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Or use the root `start.sh`:
+```bash
+./start.sh        # Production build + preview + backend
+./start.sh --dev  # Dev server + backend
+```
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Architecture
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+src/
+├── App.tsx              # Root component, page routing
+├── types.ts             # TypeScript interfaces
+├── store/
+│   └── AppContext.tsx   # Global state (React Context)
+├── utils/
+│   ├── api.ts           # Backend API calls
+│   └── helpers.ts       # Markdown generation, exports, formatting
+├── components/
+│   ├── Sidebar.tsx      # Navigation sidebar
+│   ├── Button.tsx       # Animated button
+│   ├── Input.tsx        # Input & Textarea
+│   ├── UI.tsx           # Badges, stats, progress, toggles, etc.
+│   ├── VideoCard.tsx    # YouTube video result card
+│   └── TranscriptViewer.tsx  # Paragraph/raw transcript viewer
+└── pages/
+    ├── SingleVideo.tsx
+    ├── BulkVideos.tsx
+    ├── Playlist.tsx
+    ├── ExportPage.tsx
+    ├── HistoryPage.tsx
+    ├── SettingsPage.tsx
+    ├── SingleUrl.tsx
+    ├── BulkUrls.tsx
+    ├── ExtractFromText.tsx
+    ├── UrlHistoryPage.tsx
+    └── UrlSettingsPage.tsx
 ```

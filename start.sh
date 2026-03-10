@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# YouTube Transcript Extractor & URL Metadata Tools
-# Startup Script for Organized Project Structure
+# Content Extractor Pro
+# Startup Script
 
-echo "🎬 Starting YouTube Transcript Extractor & URL Metadata Tools"
+echo "⚡ Content Extractor Pro"
 echo "=================================================="
 echo ""
 
@@ -13,7 +13,7 @@ if ! command -v python3 &> /dev/null; then
     exit 1
 fi
 
-# Install dependencies if requirements.txt exists
+# Install Python dependencies if requirements.txt exists
 if [ -f "config/requirements.txt" ]; then
     echo "📦 Installing Python dependencies..."
     pip install -r config/requirements.txt
@@ -23,14 +23,36 @@ fi
 echo "🚀 Starting servers..."
 echo ""
 
-# Start frontend server
-echo "▶️  Starting Frontend Server (Port 8000)..."
-cd frontend
-python3 -m http.server 8000 &
-FRONTEND_PID=$!
-cd ..
+# --- React App (preferred) ---
+if command -v node &> /dev/null && [ -d "app" ]; then
+    echo "▶️  Starting React App (Port 5173)..."
+    cd app
 
-# Wait a moment for frontend to start
+    # Install npm deps if not present
+    if [ ! -d "node_modules" ]; then
+        echo "   Installing npm dependencies..."
+        npm install
+    fi
+
+    # Build and preview (production), or dev server
+    if [ "$1" = "--dev" ]; then
+        npm run dev -- --host 0.0.0.0 &
+    else
+        npm run build && npm run preview -- --port 5173 --host 0.0.0.0 &
+    fi
+    FRONTEND_PID=$!
+    cd ..
+    REACT_PORT=5173
+else
+    # Fallback: serve old vanilla HTML frontend
+    echo "▶️  Starting Legacy Frontend (Port 8000)..."
+    cd frontend
+    python3 -m http.server 8000 &
+    FRONTEND_PID=$!
+    cd ..
+    REACT_PORT=8000
+fi
+
 sleep 2
 
 # Start backend server
@@ -40,25 +62,19 @@ python3 app.py &
 BACKEND_PID=$!
 cd ..
 
-# Wait a moment for backend to start
 sleep 3
 
 echo ""
 echo "✅ Servers are running!"
 echo "=================================================="
-echo "🌐 Frontend URLs (served from \`frontend\` as document root):"
-echo "   • Main App (index):     http://localhost:8000/index.html"
-echo "   • Simple URL Extractor: http://localhost:8000/simple_extractor.html"
-echo "   • Reddit Downloader:    http://localhost:8000/reddit_downloader.html"
-echo "   • Debug Tools:          http://localhost:8000/debug_frontend.html"
-echo ""
-echo "🔧 Backend API:            http://localhost:5002"
+echo "🌐 React App:             http://localhost:${REACT_PORT}"
+echo "🎬 Legacy Frontend:       http://localhost:8000/index.html"
+echo "🔧 Backend API:           http://localhost:5002"
 echo ""
 echo "=================================================="
 echo "💡 Tips:"
-echo "   • Use Ctrl+C to stop both servers"
-echo "   • Check logs in terminal for any errors"
-echo "   • Use Debug Tools to test backend connectivity"
+echo "   • Run './start.sh --dev' for hot-reload dev mode"
+echo "   • Use Ctrl+C to stop all servers"
 echo ""
 
 # Function to cleanup processes on script exit
