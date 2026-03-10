@@ -45,13 +45,7 @@ jobs:
       - name: Assemble site
         run: |
           mkdir -p _site
-
-          # React app at root — serves as the primary UI
           cp -r app/dist/. _site/
-
-          # Legacy HTML tools under /legacy/ for backwards compatibility
-          mkdir -p _site/legacy
-          cp -r frontend/. _site/legacy/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
