@@ -7,7 +7,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary: #6366f1;
@@ -258,7 +258,7 @@
             padding: 14px 16px;
             border: 1.5px solid rgba(99,102,241,0.2);
             border-radius: 10px;
-            font-family: 'JetBrains Mono', 'Monaco', 'Menlo', monospace;
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
             font-size: 13px;
             resize: vertical;
             background: rgba(255,255,255,0.03);
@@ -534,7 +534,7 @@
             background: rgba(0,0,0,0.25);
             padding: 18px;
             border-radius: 12px;
-            font-family: 'JetBrains Mono', 'Monaco', monospace;
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
             font-size: 13px;
             color: var(--text-primary);
             border: 1px solid var(--card-border);
@@ -819,7 +819,7 @@
             border: 1px solid var(--card-border);
             border-radius: 8px;
             padding: 12px;
-            font-family: 'JetBrains Mono', 'Monaco', monospace;
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
             font-size: 12px;
             margin: 8px 0;
             word-break: break-all;
@@ -888,7 +888,7 @@
                 </div>
             </div>
 
-            <div class="tabs">
+            <div class="tabs" id="mainTabs">
                 <button class="tab active" onclick="switchMainTab('transcript')">🎬 YouTube Transcript</button>
                 <button class="tab" onclick="switchMainTab('urlconverter')">🔗 URL to Markdown</button>
             </div>
@@ -1619,8 +1619,8 @@ Transcript:
         // Main tab management for switching between YouTube Transcript and URL Converter
         function switchMainTab(tabName) {
             document.querySelectorAll('.main-tab-content').forEach(c => c.classList.remove('active'));
-            // Only deactivate main tab buttons (the first .tabs div directly inside .card)
-            const mainTabsContainer = document.querySelector('.card > .tabs');
+            // Only deactivate main tab buttons using the specific mainTabs container
+            const mainTabsContainer = document.getElementById('mainTabs');
             if (mainTabsContainer) {
                 mainTabsContainer.querySelectorAll('button').forEach(t => t.classList.remove('active'));
             }
@@ -2245,6 +2245,7 @@ Transcript:
         function switchTab(tabName) {
             // Scope to YouTube transcript section only to avoid affecting URL converter tabs
             const transcriptSection = document.getElementById('transcript-section');
+            if (!transcriptSection) return;
             transcriptSection.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             transcriptSection.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
             document.getElementById(tabName + '-tab').classList.add('active');
