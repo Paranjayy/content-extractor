@@ -3,8 +3,6 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
@@ -19,7 +17,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Build job — runs on both push and pull_request for CI validation
+  # Build job — assembles the site artifact for GitHub Pages deployment
   build:
     runs-on: ubuntu-latest
     steps:
@@ -58,9 +56,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
 
-  # Deployment job — only runs on push to main, never on pull requests
+  # Deployment job — runs only when the push lands on main (guaranteed by the on.push trigger above)
   deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
