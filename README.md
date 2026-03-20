@@ -1,3 +1,4 @@
+![GitHub Profile Views](https://gitviews.com/repo/paranjayy/content-extractor.svg?color=%23f76707&label-color=black)
 # 🚀 Content Extractor Pro
 
 **A comprehensive web content extraction toolkit with YouTube transcripts, URL metadata, and Reddit content downloading - all with intelligent file naming and bulk processing capabilities.**
